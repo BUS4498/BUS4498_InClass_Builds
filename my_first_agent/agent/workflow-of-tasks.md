@@ -1,6 +1,6 @@
 # Workflow of Tasks
 
-> **Student instructions:** Replace all bracketed prompts with information specific to your proposed system. Delete instructional text that does not belong in your final specification. Add or remove task sections as needed. Every task shown in the general workflow must have a corresponding task specification below.
+*Replace all bracketed prompts with information specific to your proposed system. Delete instructional text that does not belong in your final specification. Add or remove task sections as needed. Every task shown in the general workflow must have a corresponding task specification below.*
 
 ## 1. Workflow Overview
 ### 1.1 Workflow Goal
