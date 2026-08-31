@@ -10,9 +10,9 @@ This workflow supports the system goal defined in `my_first_agent/README.md`.
 
 [Describe the event, request, schedule, or condition that starts the workflow.]
 
-### 1.3 Stopping Condition at Runtime
+### 1.3 Completion Condition at Runtime
 
-[Describe how the system knows, on any given run, that this workflow is finished.]
+[Describe how the system knows, on any given run, that this workflow is completed.]
 
 ### 1.4 General Workflow
 
