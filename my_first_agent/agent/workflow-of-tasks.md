@@ -29,4 +29,5 @@ flowchart TD
     D1 -->|Yes| T3["T3: Next task"]
     D1 -->|No| H1["Human review"]
     H1 --> T3
+    T3 --> C1([C1: Completion state])
 ```
