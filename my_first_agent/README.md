@@ -1,22 +1,23 @@
 # About the Agentic System
 
-**A Hackathon Registration and Attendance Planning Agent**
-> **Problem to be solved**: The Cal Poly Vibe Coding Club (CPVC) is planning a campus-wide AI Hackathon event for students. Participants register before the event, but not everyone who registers will actually attend. Some participants may change their plans without canceling, while others may remain unsure until shortly before the event. The attendance-to-registration rate of CPVC's last build event was roughly at 40%. Because registration totals do not accurately represent actual attendance, CPVC organizers have difficulty deciding how much food, how many drinks, and how much event swag to prepare. Planning for too many attendees wastes the club’s limited budget. Planning for too few may leave participants without adequate food or materials and negatively affect their event experience. CPVC currently relies mainly on the number of registrations and the organizers’ personal judgment. The club needs a more reliable and manageable way to anticipate actual attendance while respecting participants’ privacy and avoiding excessive communication.
+> **Worked example:** This file shows one completed version of the Week 2 `README.md` template. It uses a fictional internship-search and application-preparation scenario.
 
-*Replace every bracketed prompt below with your information. Delete this instruction and any unused placeholder text before committing the completed charter.*
+**Internship Application Prep Agent**
+
+> **Problem to be solved**: An undergraduate student searches across many public websites for internships and tracks promising opportunities manually. Relevant posting details may be incomplete, duplicated, or changed after the student first sees them. The student may also spend time preparing materials before confirming whether an opportunity fits their experience, location, availability, and work-authorization constraints. For this fictional worked example, use the following current baseline: a typical manual search produces an average of two opportunities that have a verified source, documented fit rationale, and clear next action. The student needs a bounded, evidence-based workflow that improves this result, keeps a reliable local collection, and prepares review-only application materials without taking control of career decisions or submitting an application.
 
 ### System Designer Name
 
-[Enter your name.]
-
+BUS 4498 Instructor Example
 
 ### System Name
 
-[Use a default name "HackTrack" or enter the name you choose for the system.]
+Internship Application Prep Agent
 
 ### System Goal
-[Read Chapter 2 Section 2.1, then enter the well-structured goal of your agentic system]
+
+**For** an undergraduate student seeking Summer 2027 internships, **improve** the student's ability to focus on a manageable set of sufficiently relevant opportunities that are ready for informed review, **measured by** the number of opportunities per discovery run with a verified source, documented fit rationale, and clear next action **moving from** an average of two **to** a target of three to five when at least three qualify, **without** adding weak opportunities to meet the target, fabricating qualifications, submitting applications, changing final materials, or contacting employers without the student's explicit approval.
 
 ### Who Is Better Off When This Works?
 
-[In one complete sentence, identify who will be better off when the system works.]
+The student is better off because they receive a manageable, traceable set of relevant opportunities and review-ready preparation support while retaining final authority over every application and external communication.
