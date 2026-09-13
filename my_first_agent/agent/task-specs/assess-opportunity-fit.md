@@ -50,15 +50,16 @@ task_owner: "Internship Application Prep Agent; the student retains final decisi
 
 ### Tool 1
 
-- **Tool name:** [Proposed verb-object name, used consistently throughout the project.]
-- **Tool type:** [For example: Python script, pretrained model, API request, database query, or language-model call.]
-- **Supports these permitted subtasks:** [Names from Section 4.]
-- **Allowed use:** [What the tool may read, create, change, or send; identify permitted data sources and destinations.]
-- **Prohibited use:** [Actions, data, or destinations outside this tool's authority.]
-- **Approval required:** [What requires approval, who provides it, and when. Write "None within the allowed use" if applicable.]
-- **Timeout per call:** [Maximum duration of a single attempt, with units.]
-- **Maximum retries per call:** [Nonnegative whole number of additional attempts after the first; 0 means no retries.]
-- **Retry conditions and failure response:** [When a retry is allowed, any waiting interval, and what happens on timeout or exhausted retries. For actions that change state, avoid duplicate actions and hand off if the outcome is uncertain.]
+- **Tool name:** [Proposed verb-object name.]
+- **Input:** [replace with a input name listed above]
+- **Output:** [replace with a output name listed above]
+- **Implementation Route:** [file operations, functions/scripts, database queries, and web API calls]
+- **Integration approach:** [direct integration, or MCP integration]
+- **Role in this task:** [Support which permitted subtask(s)]
+- **Task timeout:** [Maximum total elapsed time for one task run, with units. For L0, state a human response deadline instead, such as one business day after assignment.]
+- **Maximum retries:** [Nonnegative whole number of additional attempts. Use 0 if retries are not permitted. For L0, write "Not applicable — manual task."]
+- **Retry only when:** [Conditions that permit another attempt and any waiting interval. For work that changes records or sends messages, explain how retries avoid duplicates; hand off if the action's outcome is uncertain. Write "Not applicable" for manual tasks or when retries are 0.]
+- **On timeout, exhausted retries, or an error that cannot be retried:** [State the status or evidence recorded and the exception task or person receiving the case. Do not continue as if the task succeeded.]
 
 *Copy the Tool block as needed. Tool-specific and task-wide limits both apply; stop at whichever is reached first. Naming a tool does not authorize uses outside its stated permissions.*
 
