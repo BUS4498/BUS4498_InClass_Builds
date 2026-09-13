@@ -51,11 +51,12 @@ task_owner: "Internship Application Prep Agent; the student retains final decisi
 ### Tool 1
 
 - **Tool name:** [Proposed verb-object name.]
+- **Role in this task:** [Support which permitted subtask(s)]
 - **Input:** [replace with a input name listed above]
 - **Output:** [replace with a output name listed above]
 - **Implementation Route:** [file operations, functions/scripts, database queries, and web API calls]
 - **Integration approach:** [direct integration, or MCP integration]
-- **Role in this task:** [Support which permitted subtask(s)]
+
 - **Task timeout:** [Maximum total elapsed time for one task run, with units. For L0, state a human response deadline instead, such as one business day after assignment.]
 - **Maximum retries:** [Nonnegative whole number of additional attempts. Use 0 if retries are not permitted. For L0, write "Not applicable — manual task."]
 - **Retry only when:** [Conditions that permit another attempt and any waiting interval. For work that changes records or sends messages, explain how retries avoid duplicates; hand off if the action's outcome is uncertain. Write "Not applicable" for manual tasks or when retries are 0.]
