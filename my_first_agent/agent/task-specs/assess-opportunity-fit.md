@@ -7,6 +7,13 @@
 task_id: "T4"
 task_name: "Assess Opportunity Fit"
 task_owner: "Internship Application Prep Agent; the student retains final decision authority"
+
+# Agent Inference Configuration
+Provider: Groq.
+Model: [Exact supported API model ID.]
+Role: Interpret supplied evidence, select the next permitted subtask, and produce the evidence-backed assessment.
+Maximum inference requests per task run: [Whole-number limit.]
+On inference failure or exhausted limits: Record the unresolved status and hand the case to the student.
 ```
 
 ## 1. Task Goal
