@@ -41,6 +41,28 @@ task_owner: "Internship Application Prep Agent; the student retains final decisi
 
 ## 3. Tool Permissions and Boundaries
 
+*Name each planned tool and specify its permitted use. Use verb-object names, such as `retrieve_records`, usually matching the task or permitted subtask it supports. Tool name identifies the capability; tool type identifies the proposed implementation. No scripts or working integrations are required.*
+
+### Task-Wide Limits
+
+- **Total task timeout:** [Maximum elapsed time for one task run, with units; include tool calls, retries, and waiting.]
+- **Maximum tool calls:** [Maximum total calls across all tools during one task run; retries count toward this total.]
+
+### Tool 1
+
+- **Tool name:** [Proposed verb-object name, used consistently throughout the project.]
+- **Tool type:** [For example: Python script, pretrained model, API request, database query, or language-model call.]
+- **Supports these permitted subtasks:** [Names from Section 4.]
+- **Allowed use:** [What the tool may read, create, change, or send; identify permitted data sources and destinations.]
+- **Prohibited use:** [Actions, data, or destinations outside this tool's authority.]
+- **Approval required:** [What requires approval, who provides it, and when. Write "None within the allowed use" if applicable.]
+- **Timeout per call:** [Maximum duration of a single attempt, with units.]
+- **Maximum retries per call:** [Nonnegative whole number of additional attempts after the first; 0 means no retries.]
+- **Retry conditions and failure response:** [When a retry is allowed, any waiting interval, and what happens on timeout or exhausted retries. For actions that change state, avoid duplicate actions and hand off if the outcome is uncertain.]
+
+*Copy the Tool block as needed. Tool-specific and task-wide limits both apply; stop at whichever is reached first. Naming a tool does not authorize uses outside its stated permissions.*
+
+
 ## 4. How the Agent Should Reason
 
 ### Permitted Subtask 1
