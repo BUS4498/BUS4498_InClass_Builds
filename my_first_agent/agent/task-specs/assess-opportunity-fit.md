@@ -45,24 +45,38 @@ task_owner: "Internship Application Prep Agent; the student retains final decisi
 
 ### Task-Wide Limits
 
-- **Total task timeout:** [Maximum elapsed time for one task run, with units; include tool calls, retries, and waiting.]
-- **Maximum tool calls:** [Maximum total calls across all tools during one task run; retries count toward this total.]
+- **Total task timeout:** 120 seconds for one task run, including tool calls, retries, reasoning, and waiting. A tool call or retry does not restart this clock. If student clarification is needed, record the handoff and end the run rather than waiting indefinitely.
+- **Maximum tool calls:** 6 calls across all tools during one task run; retries count toward this total. The subtask repetition and clarification limits in Section 4 also apply.
+
+Tools may use only the supplied inputs for this opportunity. They may not conduct a new internship search, follow external links to gather additional evidence, modify student or opportunity records, contact employers, or submit applications. The agent prepares the Section 6 deliverable for the surrounding workflow to route.
 
 ### Tool 1
 
-- **Tool name:** [Proposed verb-object name.]
-- **Role in this task:** [Support which permitted subtask(s)]
-- **Input:** [replace with a input name listed above]
-- **Output:** [replace with a output name listed above]
-- **Implementation Route:** [file operations, functions/scripts, database queries, and web API calls]
-- **Integration approach:** [direct integration, or MCP integration]
+- **Tool name:** `retrieve_supplied_evidence`
+- **Role in this task:** Support Compare Requirements, Evaluate Constraints, Examine Evidence Gaps, Incorporate Student Clarification, and Form Evidence-Backed Assessment by locating relevant passages in the supplied inputs.
+- **Input:** Validated opportunity record; Verified student context; Opportunity history; Student clarification, when supplied.
+- **Output:** Source-labeled excerpts for the Evidence summary, plus missing, stale, or conflicting evidence for Unresolved issues. Preserve the input name and available source reference for each excerpt.
+- **Implementation Route:** File operations restricted to the local artifacts supplied as this task’s inputs.
+- **Integration approach:** Direct integration.
+- **Task timeout:** Subject to the same 120-second total task deadline. Each call may take at most 5 seconds or the remaining task time, whichever is shorter.
+- **Maximum retries:** 1 additional attempt per invocation, subject to the task-wide call and time limits.
+- **Retry only when:** A temporary file-access or read error prevents completion. Wait 2 seconds and retry only if enough time and call budget remain. Do not retry denied access, an invalid input reference, or a confirmed missing required artifact. An optional Student clarification that has not been supplied is not a read failure. This tool is read-only, so retries do not create duplicate records or messages.
+- **On timeout, exhausted retries, or an error that cannot be retried:** Record the affected input, attempted operation, failure category, and attempts in Subtasks performed and Unresolved issues. Set Status to “Escalated to the student.” If a supported assessment cannot be produced, set Result or recommendation to “undetermined.” Use the Handoff note to identify the exact evidence or access correction needed. Do not treat an unreadable input as evidence that the student lacks a qualification.
 
-- **Task timeout:** [Maximum total elapsed time for one task run, with units. For L0, state a human response deadline instead, such as one business day after assignment.]
-- **Maximum retries:** [Nonnegative whole number of additional attempts. Use 0 if retries are not permitted. For L0, write "Not applicable — manual task."]
-- **Retry only when:** [Conditions that permit another attempt and any waiting interval. For work that changes records or sends messages, explain how retries avoid duplicates; hand off if the action's outcome is uncertain. Write "Not applicable" for manual tasks or when retries are 0.]
-- **On timeout, exhausted retries, or an error that cannot be retried:** [State the status or evidence recorded and the exception task or person receiving the case. Do not continue as if the task succeeded.]
+### Tool 2
 
-*Copy the Tool block as needed. Tool-specific and task-wide limits both apply; stop at whichever is reached first. Naming a tool does not authorize uses outside its stated permissions.*
+- **Tool name:** `check_explicit_constraints`
+- **Role in this task:** Support Evaluate Constraints and Form Evidence-Backed Assessment by checking directly comparable, explicitly stated requirements against verified student constraints.
+- **Input:** Validated opportunity record; Verified student context; Student clarification, when relevant and supplied.
+- **Output:** Constraint findings for the Evidence summary, with supporting input references; unresolved or ambiguous comparisons for Unresolved issues.
+- **Implementation Route:** Functions/scripts performing deterministic comparisons of explicit values, such as dates, available hours, and stated location preferences.
+- **Integration approach:** Direct integration.
+- **Task timeout:** Subject to the same 120-second total task deadline. Each call may take at most 5 seconds or the remaining task time, whichever is shorter.
+- **Maximum retries:** 0.
+- **Retry only when:** Not applicable. A later comparison using materially changed evidence is a new invocation, not a retry, and must remain within Section 4’s repetition limits and the task-wide budgets.
+- **On timeout, exhausted retries, or an error that cannot be retried:** Record the failed comparison and its input references in Subtasks performed and Unresolved issues. Set Status to “Escalated to the student,” and identify the needed clarification in the Handoff note. Use “undetermined” for Result or recommendation when no supported assessment is possible. Do not interpret a processing error as a constraint conflict.
+
+This second tool must return “unknown” when a comparison requires unstated assumptions, ambiguous eligibility interpretation, or relaxation of a student preference. It cannot invent missing values or make the student’s decision. It is read-only and creates no records or messages.
 
 
 ## 4. How the Agent Should Reason
