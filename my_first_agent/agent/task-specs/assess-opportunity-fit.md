@@ -10,7 +10,7 @@ task_owner: "Internship Application Prep Agent; the student retains final decisi
 
 # Agent Inference Configuration
 Provider: Groq
-Model: groq/compound
+Model: openai/gpt-oss-20b
 Role: Interpret supplied evidence, select the next permitted subtask, and produce the evidence-backed assessment.
 Maximum inference requests per task run: 6
 On inference failure or exhausted limits: Record the unresolved status and hand the case to the student.
