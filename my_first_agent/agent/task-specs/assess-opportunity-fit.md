@@ -48,8 +48,6 @@ On inference failure or exhausted limits: Record the unresolved status and hand 
 
 ## 3. Tool Permissions and Boundaries
 
-*Name each planned tool and specify its permitted use. Use verb-object names, such as `retrieve_records`, usually matching the task or permitted subtask it supports. Tool name identifies the capability; tool type identifies the proposed implementation. No scripts or working integrations are required.*
-
 ### Task-Wide Limits
 
 - **Total task timeout:** 120 seconds for one task run, including tool calls, retries, reasoning, and waiting. A tool call or retry does not restart this clock. If student clarification is needed, record the handoff and end the run rather than waiting indefinitely.
