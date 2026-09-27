@@ -4,12 +4,13 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import mammoth from 'npm:mammoth@1.12.3';
 import { extractText } from 'npm:unpdf@1';
 import { classifyFile, contextOutcome, selectLiteralFacts, sourcePassages, validateConfirmation, validateScope } from '../_shared/g1-domain.mjs';
+import { createG2 } from '../_shared/g2-runtime.ts';
 
 const SECRET = Deno.env.get('CAREER_G1_GATEWAY_SECRET');
 const DB_URL = Deno.env.get('SUPABASE_DB_URL');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const sql = DB_URL ? postgres(DB_URL, { max: 1, prepare: false, idle_timeout: 10 }) : null;
+const sql = DB_URL ? postgres(DB_URL, { max: 1, prepare: false, idle_timeout: 10, connection: { statement_timeout: 5000 } }) : null;
 const storage = SUPABASE_URL && SERVICE_KEY ? createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } }).storage : null;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -49,7 +50,8 @@ async function authenticate(request: Request, body: Uint8Array) {
   if (!exactEmail(envelope.identity_email) || !/^[0-9a-f-]{36}$/i.test(envelope.request_id || '') ||
       !/^[0-9a-f-]{36}$/i.test(envelope.nonce || '') ||
       !Number.isFinite(envelope.expires_at_ms) || envelope.expires_at_ms < now || envelope.expires_at_ms > now + 30_000 ||
-      !['preview_resume','save_student_setup','retrieve_student_context','request_student_clarification'].includes(envelope.operation))
+      !['preview_resume','save_student_setup','retrieve_student_context','request_student_clarification',
+        'start_discovery','step_discovery','list_discoveries','download_discovery_export','answer_validation_question'].includes(envelope.operation))
     return { ok: false, response: reply({ ok: false, code: 'INVALID_ENVELOPE' }, 401) };
   const digest = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', body)));
   if (digest !== envelope.body_sha256_hex) return { ok: false, response: reply({ ok: false, code: 'BODY_MISMATCH' }, 401) };
@@ -238,6 +240,7 @@ async function respondToHandoff(owner: string, payload: any) {
   return reply({ ok: true, handoff: rows[0], next_step: 'Start a new context check; the answer has not been assumed as a resume fact.' });
 }
 
+const g2 = createG2({ sql, storage, reply, retrieveContext, jsonColumn });
 Deno.serve(async request => {
   if (request.method !== 'POST') return reply({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
   const body = new Uint8Array(await request.arrayBuffer());
@@ -251,12 +254,13 @@ Deno.serve(async request => {
   catch { return reply({ ok: false, code: 'INVALID_JSON' }, 400); }
   try {
     const owner = await ownerId(auth.envelope.identity_email);
+    if (Object.hasOwn(g2, auth.envelope.operation)) return await g2[auth.envelope.operation](owner,payload);
     switch (auth.envelope.operation) {
       case 'preview_resume': return await previewResume(owner, payload);
       case 'save_student_setup': return await saveSetup(owner, payload);
       case 'retrieve_student_context': return await retrieveContext(owner, payload);
       case 'request_student_clarification': return await respondToHandoff(owner, payload);
     }
-  } catch { return reply({ ok: false, code: 'SETUP_OPERATION_FAILED', message: 'Setup is incomplete. No search was started.' }, 503); }
+  } catch { return reply({ ok: false, code: 'OPERATION_FAILED', message: 'The operation could not be confirmed. Inspect saved state before trying another action.' }, 503); }
   return reply({ ok: false, code: 'UNKNOWN_OPERATION' }, 400);
 });

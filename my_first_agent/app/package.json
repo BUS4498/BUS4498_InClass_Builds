@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "node build-site.mjs",
-    "test": "node --test ../tests/g1-domain.test.mjs ../tests/g1-worker.test.mjs"
+    "test": "node --test ../tests/*.test.mjs"
   }
 }

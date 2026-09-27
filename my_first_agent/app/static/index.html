@@ -7,6 +7,7 @@
   <title>Career Opportunity Prep · Student setup</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
+  <script src="g2.js" defer></script>
 </head>
 <body>
   <div id="mode-banner" class="preview-banner" role="status">Checking private setup connection…</div>
@@ -15,7 +16,7 @@
       <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>Career Prep <small>Opportunity agent</small></span></div>
       <nav aria-label="Main navigation">
         <a class="nav-item active" href="#setup" aria-current="page"><span aria-hidden="true">◫</span> My setup</a>
-        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">⌕</span> Opportunities <em>Later</em></span>
+        <a class="nav-item" href="#opportunities"><span aria-hidden="true">⌕</span> Opportunities</a>
         <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">▤</span> Preparation <em>Later</em></span>
         <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">◷</span> Schedule <em>Later</em></span>
       </nav>
@@ -64,9 +65,25 @@
         <aside class="right-column" aria-label="Setup guidance">
           <section class="summary-card"><p class="eyebrow">YOUR SETUP</p><h2>Make each match make sense.</h2><p>A future fit score will show the resume and posting evidence behind it. Missing information will become a question, not a guessed answer.</p><div class="summary-step"><span>1</span><div><strong>Upload</strong><small>Keep your original resume private</small></div></div><div class="summary-step"><span>2</span><div><strong>Confirm</strong><small>Review extracted facts and corrections</small></div></div><div class="summary-step"><span>3</span><div><strong>Choose</strong><small>Set role types and timeframe</small></div></div></section>
           <section class="question-card"><div class="question-icon" aria-hidden="true">?</div><p id="question-kind" class="eyebrow">EXAMPLE CLARIFICATION</p><h2 id="question-heading">We need one detail from you</h2><p id="question-text">“What is the earliest date you could start? Choose a date or tell us it is not yet known.”</p><small id="question-detail">A real question will name the missing item and remain pending until you answer. This is a sample.</small><div id="answer-panel" hidden><label class="form-label" for="answer-kind">Your response</label><select id="answer-kind"><option value="confirmed">Confirmed</option><option value="corrected">Correction</option><option value="unavailable">Information unavailable</option></select><textarea id="answer-text" rows="3" placeholder="Answer in your own words"></textarea><button id="answer-submit" class="secondary-button" type="button">Save response</button></div></section>
-          <section class="boundary-card"><strong>Before a search runs</strong><p>Resume facts, role types, and timeframe must be confirmed. Search, scoring, documents, and email are later build groups.</p></section>
+          <section class="boundary-card"><strong>Before a search runs</strong><p>Confirm your resume, role types, and timeframe, then open Opportunities below. Fitness scoring, preparation, and email arrive in later build groups.</p></section>
         </aside>
       </div>
+      <section id="opportunities" class="discovery-section" aria-labelledby="opportunities-title">
+        <div class="page-header"><div><p class="eyebrow">Step 2 · Discovery and log</p><h1 id="opportunities-title">See what is out there.</h1><p class="lede">Search within your saved choices. Each posting keeps its source, verification result, and place in your private opportunity log.</p></div></div>
+        <div class="card discovery-controls">
+          <p><strong>Discovery preview</strong> · Postings are not scored yet. A verified source does not establish your eligibility or fitness.</p>
+          <div class="form-actions"><button id="g2-start" class="primary-button" type="button">Collect opportunities</button><button id="g2-synthetic" class="secondary-button" type="button">Try a synthetic run</button><button id="g2-refresh" class="text-button" type="button">Inspect saved runs</button></div>
+          <p id="g2-message" class="field-feedback" role="status">Confirm your setup before starting a search.</p>
+          <p class="hint">Up to 8 search requests, 40 screened leads, and 24 direct posting reads. Requests are never retried automatically. Keep this tab open during a manual run.</p>
+        </div>
+        <div id="g2-run-list" class="run-list" aria-label="Saved discovery runs"></div>
+        <div id="g2-result" hidden>
+          <div class="card"><p id="g2-notice" class="sample-tag"></p><h2 id="g2-heading">Discovery progress</h2><p id="g2-detail"></p><div id="g2-counters" class="counter-grid"></div><p id="g2-storage"></p><div class="form-actions"><button id="g2-continue" class="secondary-button" type="button" hidden>Continue saved run</button><button id="g2-download" class="primary-button" type="button" hidden>Download opportunity log (.xlsx)</button><a id="g2-save-file" class="secondary-button" hidden>Save verified workbook</a></div><div id="g2-issues" role="status"></div></div>
+          <section class="card"><h2>All screened postings</h2><p class="hint">Source-verified postings are shown first. Each group keeps discovery order; fitness ranking and recommended actions arrive in G3.</p><div id="g2-candidates"></div></section>
+          <section class="card"><h2>Source coverage</h2><p class="hint">A source can be skipped or inaccessible. Search-engine links remain leads until a permitted authoritative page is verified.</p><div class="table-scroll"><table class="coverage-table"><thead><tr><th>Source</th><th>Status</th><th>Requests</th><th>Leads</th><th>Reads</th><th>Verified</th><th>Details</th></tr></thead><tbody id="g2-coverage"></tbody></table></div></section>
+        </div>
+        <section id="g2-questions" class="card" hidden><h2>Validation questions</h2><div id="g2-question-list"></div></section>
+      </section>
     </main>
   </div>
 </body>

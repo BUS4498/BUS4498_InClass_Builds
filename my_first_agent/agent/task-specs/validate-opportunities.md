@@ -31,7 +31,7 @@ For discovery, validate every supplied lead within T2's 40-lead and 24-posting-r
 ### Input 2
 
 - **Input name:** Search run log
-- **Contents and format:** For discovery, run ID, fixed queries, counts, stopping reason, and any incomplete-search or service-error status. For a targeted update, explicitly not applicable, with zero discovery searches and zero new discovery candidates; the single revalidation target is counted separately.
+- **Contents and format:** For discovery, run ID, fixed search intents, provider query strings when supplied or explicitly unavailable, counts, stopping reason, and any incomplete-search or service-error status. For a targeted update, explicitly not applicable, with zero discovery searches and zero new discovery candidates; the single revalidation target is counted separately.
 - **Source:** T2: Search Career Sources for discovery; T1: Retrieve Student Context for a targeted update.
 
 ### Input 3
@@ -60,7 +60,7 @@ For discovery, validate every supplied lead within T2's 40-lead and 24-posting-r
 ### Output 2
 
 - **Output name:** Validation results
-- **Contents and format:** Run-level ledger of every screened lead: source-verified for assessment, excluded (closed, inaccessible, conflicting, or unverified), held for student-answerable validation clarification, or omitted by a global cap; reason, references, source coverage, changes, duplicate matches, candidate IDs, and unresolved questions. Include T2's actual query/API, lead, skipped-page, and posting-read counts and incomplete status. For a targeted update, record zero discovery attempts/leads, one supplied target, and revalidation disposition. T7 receives all dispositions for hosted ledger and `.xlsx` snapshot logging even when they never reach T4.
+- **Contents and format:** Run-level ledger of every screened lead: source-verified for assessment, excluded (closed, inaccessible, conflicting, or unverified), held for student-answerable validation clarification, or omitted by a global cap; reason, references, source coverage, changes, duplicate matches, candidate IDs, and unresolved questions. Include T2's actual discovery API attempts, reserved/observed hosted-search calls, observed provider queries or unavailable status, leads, skipped pages, application-controlled posting reads, and incomplete status. For a targeted update, record zero discovery attempts/leads, one supplied target, and revalidation disposition. T7 receives all dispositions for hosted ledger and `.xlsx` snapshot logging even when they never reach T4.
 - **Next task or recipient:** T7: Record and Present Results and the student. Persist held unvalidated candidates separately with their question and evidence versions. A later student response references that pending-candidate ID through T1 and this task before T4; it does not bypass validation.
 - **Complete when:** Every candidate has a traceable disposition, all held cases have a named next step, and zero qualifying results can be reported without fabrication.
 

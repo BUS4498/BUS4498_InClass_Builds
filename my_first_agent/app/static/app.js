@@ -98,7 +98,7 @@ async function context(viewOnly) {
       $('#question-heading').textContent = 'Ready for the next step';
       $('.question-icon').textContent = '✓';
       $('#question-text').textContent = 'Your resume and search choices are confirmed.';
-      $('#question-detail').textContent = 'Search and recommendations will become available in a later build group.';
+      $('#question-detail').textContent = 'Open Opportunities to start discovery. Fitness recommendations will be added in G3.';
     }
     state.resume = { id: data.resume.id, version_number: data.resume.version_number };
     renderPassages(data.resume.extracted_passages, 'SAVED RESUME', data.resume.version_number,
@@ -128,11 +128,11 @@ async function initialize() {
     const banner = $('#mode-banner');
     banner.className = `preview-banner ${state.connected ? 'connected' : session.authenticated ? 'disconnected' : 'error'}`;
     banner.textContent = state.connected
-      ? 'PRIVATE G1 SETUP · Signed-in resume storage connected · Search, scoring, documents, and email are later features'
+      ? 'PRIVATE WORKSPACE · Resume storage connected · G2 discovery preview · Fitness, preparation, and email are later features'
       : session.authenticated
         ? 'SYNTHETIC PREVIEW · Storage is not connected. No personal files are uploaded or saved.'
         : 'SIGN-IN REQUIRED · This setup belongs to a signed-in account.';
-    $('#mode-pill').textContent = state.connected ? 'Private G1 setup' : 'Preview mode';
+    $('#mode-pill').textContent = state.connected ? 'Private G2 preview' : 'Preview mode';
     if (state.connected) await context(true);
   } catch {
     $('#mode-banner').className = 'preview-banner disconnected';

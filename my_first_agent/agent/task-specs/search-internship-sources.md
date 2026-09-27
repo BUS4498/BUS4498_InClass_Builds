@@ -1,6 +1,6 @@
 # Search Career Sources Task Specification
 
-> **Worked example:** Automation levels, tool names, data structures, and operating limits in this specification are proposed design defaults. The workflow's eight query/API attempts, 40 screened leads, and 24 posting reads are required ceilings.
+> **Worked example:** Automation levels, tool names, data structures, and operating limits in this specification are proposed design defaults. The workflow's eight discovery API attempts, eight reserved hosted-search tool calls, 40 screened leads, and 24 application-controlled posting reads are required ceilings. Provider-internal query counts are not guaranteed or substituted for these counters.
 
 ## Basic Information
 
@@ -8,13 +8,13 @@
 - **Task name:** Search Career Sources
 - **Task type:** Retrieve
 - **Task owner:** Career Opportunity Prep Agent; the student controls search scope and schedule approval.
-- **Automation level (proposed):** L1.
+- **Automation level (proposed):** L2, with a fixed controller plan and bounded hosted search.
 
 ## 1. Task Description
 
-For a discovery run, retrieve internship and/or entry-level job leads using a fixed plan built from the student's confirmed resume-supported role interests, selected timeframe and role types, and explicit location constraints. Read `my_first_agent/docs/references/job-search-sources.txt` as the source registry. Use only enabled public or authorized routes whose actual runtime access has been checked; mark each named source used, attempted, skipped, restricted, or inaccessible. Record query text, source/route, scope version, and order before execution. Do not use results to generate additional searches or expand the student's scope. A registered site is not a promise that the agent can search it automatically.
+For a discovery run, retrieve internship and/or entry-level job leads using a fixed sequence of search requests built from the student's confirmed resume-supported role interests, selected timeframe and role types, and explicit location constraints. Read `my_first_agent/docs/references/job-search-sources.txt` as the source registry. Use only enabled public or authorized routes whose actual runtime access has been checked; mark each named source used, attempted, skipped, restricted, or inaccessible. Record the requested search intent, source/domain filter, scope version, and order before execution. The controller fixes the request sequence; hosted search may formulate internal queries within each requested intent. Do not use returned results to add requests or expand the student's scope. Record provider query strings when supplied, otherwise mark them unavailable rather than inventing an exact internal-query count. A registered site is not a promise that the agent can search it automatically.
 
-Perform no more than eight query/API attempts, screen no more than 40 leads, and make no more than 24 posting-page reads across the entire run. Process results in planned-source order and returned-result order, deduplicate lead links, and retain the screening count even when a lead is rejected. Search snippets and job-board listings are leads, not verified employer evidence. Use the lead's exact employer career or authorized ATS link when available for the permitted posting read; an official USAJOBS announcement may be authoritative for a federal role. Otherwise leave employer corroboration unverified. Preserve lead and checked posting URLs separately, source type, retrieval time, job identifier, and access status. Do not automate login, bypass restrictions, read unrelated pages, or contact employers.
+Perform no more than eight discovery API attempts. For the OpenAI route, reserve one hosted-search call before each request, use `max_tool_calls: 1`, and allow at most eight such reservations across the run; a timeout or uncertain outcome consumes its reservation. Screen no more than 40 leads and make no more than 24 application-controlled posting-page reads across the entire run. These limits do not claim a cap on the search provider's internal queries or retrievals. Process results in planned-source order and returned-result order, deduplicate lead links, and retain the screening count even when a lead is rejected. Search snippets and job-board listings are leads, not verified employer evidence. Use the lead's exact employer career or authorized ATS link when available for the permitted posting read; an official USAJOBS announcement may be authoritative for a federal role. Otherwise leave employer corroboration unverified. Preserve lead and checked posting URLs separately, source type, retrieval time, job identifier, and access status. Do not automate login, bypass restrictions, read unrelated pages, or contact employers.
 
 Record an individual denied, missing, or unreadable posting page as a skipped lead and continue in predetermined order within the global budgets. A source-specific restriction is logged and the next permitted planned source may continue. A search-service failure affecting all remaining routes, global deadline, or systemic processing error stops further retrieval. Neither a skipped page nor a secondary listing becomes a verified posting from its snippet or URL alone. Do not promise three to five scored results or two to three questions when the evidence is unavailable.
 
@@ -48,7 +48,7 @@ Pass available evidence to T3: Validate Opportunities. T3 determines which oppor
 ### Output 2
 
 - **Output name:** Search run log
-- **Contents and format:** Run ID, confirmed scope version, fixed query texts, access route and attempted/used/skipped/restricted/inaccessible status for each registry source, query/API-attempt, lead, posting-read, and skipped-page counts, timestamps, access failures, service failures, and stopping reason: plan completed, query cap, lead cap, page cap, timeout, or systemic service error. Distinguish an empty bounded search, source restriction, and broader service failure.
+- **Contents and format:** Run ID, confirmed scope version, fixed requested search intents and domain filters, observed provider queries or unavailable status, access route and attempted/used/skipped/restricted/inaccessible status for each registry source, discovery API-attempt count, reserved and observed hosted-search-call counts, lead count, application-controlled posting-read count, skipped-page count, timestamps, access failures, service failures, and stopping reason: plan completed, request cap, lead cap, page cap, timeout, or systemic service error. Distinguish an empty bounded search, source restriction, and broader service failure.
 - **Next task or recipient:** T3: Validate Opportunities and T7: Record and Present Results; the student receives unresolved service or access issues through T7.
 - **Complete when:** Actual attempts and failures are counted and a reader can distinguish no qualifying evidence from an incomplete search.
 
@@ -59,9 +59,9 @@ Pass available evidence to T3: Validate Opportunities. T3 determines which oppor
 - **Tool name:** search_career_sources
 - **Input:** Verified student context; Opportunity history.
 - **Output:** Candidate opportunity evidence; Search run log.
-- **Implementation Route:** Functions/scripts to fill and execute the fixed query sequence, with web API calls for public search and public posting retrieval.
+- **Implementation Route:** Functions/scripts execute the fixed request sequence through OpenAI Responses with `gpt-5.6-luna`, reasoning effort `none`, required `web_search`, domain filters when applicable, `max_tool_calls: 1`, and the complete tool source list. The controller accepts only source URLs returned by the search tool as discovery leads; model-written summaries do not establish posting facts. Public posting retrieval then uses bounded direct reads.
 - **Integration approach:** Direct integration.
-- **Role in this task:** Return source evidence under a predetermined accessible-source sequence. The tool does not use a model to choose searches, score fit, update the hosted ledger or `.xlsx` snapshot, or submit applications. Failed query/API attempts count toward the eight-attempt cap and failed posting reads count toward the 24-read cap; skipped leads do not extend any limit.
+- **Role in this task:** Return leads under a predetermined accessible-source request sequence. The model may formulate queries inside the one permitted hosted-search call, but cannot add application requests or change confirmed scope. The controller rejects unexpected tool actions or missing source evidence and marks the search operationally incomplete. No fit scoring, ledger/export write, or application submission occurs in T2. Failed discovery API attempts and uncertain hosted-call outcomes consume their respective eight-attempt/reservation budgets; failed direct posting reads consume the 24-read budget. Skipped leads do not extend any limit.
 - **Task timeout:** 480 seconds total for the entire task. Each external call has a 15-second maximum or the remaining task time, whichever is shorter.
 - **Maximum retries:** 0.
 - **Retry only when:** Not applicable.
