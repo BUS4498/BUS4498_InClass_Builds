@@ -4,11 +4,19 @@ const operations = new Map([
   ['/api/g1/confirm', 'save_student_setup'],
   ['/api/g1/context', 'retrieve_student_context'],
   ['/api/g1/handoff', 'request_student_clarification'],
+  ['/api/g1/reset', 'reset_student_setup'],
+  ['/api/g4/start','start_targeted_preparation'],
+  ['/api/g4/materials','list_preparation'],
+  ['/api/g4/revision','save_material_revision'],
+  ['/api/g4/review','record_student_review'],
+  ['/api/g4/download','download_material'],
   ['/api/g2/start', 'start_discovery'],
   ['/api/g2/step', 'step_discovery'],
   ['/api/g2/runs', 'list_discoveries'],
   ['/api/g2/download', 'download_discovery_export'],
   ['/api/g2/answer', 'answer_validation_question'],
+  ['/api/g2/library', 'list_opportunity_library'],
+  ['/api/g2/library/update', 'update_opportunity_library'],
 ]);
 
 function json(value, status = 200) {
@@ -56,7 +64,7 @@ async function proxy(request, env, email, operation) {
   };
   const signed = await signEnvelope(env.G1_GATEWAY_SECRET, envelope);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), operation === 'request_student_clarification' ? 5_000 : 30_000);
+  const timeout = setTimeout(() => controller.abort(), ['request_student_clarification','list_preparation','save_material_revision','record_student_review'].includes(operation) ? 5_000 : 30_000);
   try {
     const response = await fetch(env.SUPABASE_G1_URL, {
       method: 'POST', body, signal: controller.signal,
@@ -84,22 +92,22 @@ export default {
         data_mode: env.G1_GATEWAY_SECRET && env.SUPABASE_G1_URL ? 'live' : 'not_connected' });
     }
     if (operations.has(url.pathname)) {
-      if (url.pathname === '/api/g2/download' && request.method === 'GET') {
+      if (['/api/g2/download','/api/g4/download'].includes(url.pathname) && request.method === 'GET') {
         const email = authenticatedEmail(request);
         if (!email) return json({ ok: false, code: 'SIGN_IN_REQUIRED' }, 401);
         if (request.headers.get('sec-fetch-site') === 'cross-site' || (request.headers.get('origin') && request.headers.get('origin') !== url.origin))
           return json({ ok: false, code: 'CROSS_ORIGIN_DENIED' }, 403);
-        const exportId = url.searchParams.get('exportId');
+        const material=url.pathname==='/api/g4/download';const exportId = url.searchParams.get(material?'versionId':'exportId');
         if (!/^[0-9a-f-]{36}$/i.test(exportId || '')) return json({ ok: false, code: 'INVALID_EXPORT_ID' }, 400);
-        const forwarded = new Request(request.url, { method: 'POST', headers: { 'content-type': 'application/json', origin: url.origin }, body: JSON.stringify({ exportId }) });
-        const response = await proxy(forwarded, env, email, 'download_discovery_export');
+        const forwarded = new Request(request.url, { method: 'POST', headers: { 'content-type': 'application/json', origin: url.origin }, body: JSON.stringify(material?{versionId:exportId}:{exportId}) });
+        const response = await proxy(forwarded, env, email, material?'download_material':'download_discovery_export');
         const data = await response.json();
         if (!response.ok || !data.ok) return json(data, response.status);
         try {
           const bytes = Uint8Array.from(atob(data.base64), c => c.charCodeAt(0));
-          if (bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))) !== data.sha256 || !/^job-opportunities-v\d+\.xlsx$/.test(data.fileName))
+          if (bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))) !== data.sha256 || !(material?/^(resume_tailoring|cover_letter|interview_cards)-v\d+\.(docx|json)$/:/^job-opportunities-v\d+\.xlsx$/).test(data.fileName))
             throw new Error('Invalid export');
-          return new Response(bytes, { headers: { ...NO_STORE, 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': `attachment; filename="${data.fileName}"` } });
+          return new Response(bytes, { headers: { ...NO_STORE, 'content-type': material?(data.fileName.endsWith('.docx')?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/json'):'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': `attachment; filename="${data.fileName}"` } });
         } catch { return json({ ok: false, code: 'EXPORT_INTEGRITY_FAILED' }, 502); }
       }
       if (request.method !== 'POST') return json({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
@@ -108,6 +116,10 @@ export default {
       return proxy(request, env, email, operations.get(url.pathname));
     }
     if (request.method !== 'GET' && request.method !== 'HEAD') return json({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
+    if (['/setup','/opportunities','/preparation','/schedule'].includes(url.pathname.replace(/\/$/,''))) {
+      const assetUrl=new URL(request.url);assetUrl.pathname='/';
+      return env.ASSETS.fetch(new Request(assetUrl,request));
+    }
     return env.ASSETS.fetch(request);
   },
 };

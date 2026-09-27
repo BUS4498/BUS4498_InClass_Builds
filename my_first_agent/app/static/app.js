@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector);
-const state = { connected: false, sample: false, resume: null, scopeVersion: 0, pending: null };
+const state = { connected: false, sample: false, resume: null, scopeVersion: 0, pending: null, workspaceVersion: 0, dirty: false, suggestedSummary: "", ready: false };
 const say = message => { $('#review-status').textContent = message; };
 
 async function api(path, body) {
@@ -20,56 +20,33 @@ function showPending(item) {
     : `Affected input: ${item.affected_input}.${source}`;
   $('#answer-panel').hidden = false;
 }
-function renderPassages(passages, tagText, version, confirmedIds = []) {
-  $('#sample-facts').hidden = true;
-  const panel = $('#live-facts');
-  panel.replaceChildren();
-  panel.hidden = false;
-  $('#facts-panel').hidden = false;
-  $('#empty-facts').hidden = true;
-  const heading = document.createElement('div');
-  heading.className = 'facts-head';
-  const tag = document.createElement('span');
-  tag.className = 'sample-tag';
-  tag.textContent = tagText;
-  const count = document.createElement('span');
-  count.textContent = `Resume version ${version} · ${passages.length} extracted passages`;
-  heading.append(tag, count);
-  panel.append(heading);
-  for (const passage of passages.slice(0, 30)) {
-    const row = document.createElement('div');
-    row.className = 'fact';
-    const content = document.createElement('div');
-    const body = document.createElement('p');
-    body.textContent = passage.text;
-    const source = document.createElement('small');
-    source.textContent = `Source: ${passage.reference}`;
-    content.append(body, source);
-    const label = document.createElement('label');
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.className = 'fact-check';
-    box.value = passage.id;
-    box.checked = confirmedIds.includes(passage.id);
-    label.append(box, document.createTextNode(' Confirm'));
-    row.append(content, label);
-    panel.append(row);
-  }
-  if (passages.length > 30) {
-    const note = document.createElement('p');
-    note.className = 'hint';
-    note.textContent = `${passages.length - 30} more passages were extracted. Review the original before confirming; you can correct any detail below.`;
-    panel.append(note);
-  }
-  const label = document.createElement('label');
-  label.className = 'form-label';
-  label.htmlFor = 'live-correction';
-  label.textContent = 'Anything to correct or add?';
-  const correction = document.createElement('textarea');
-  correction.id = 'live-correction';
-  correction.rows = 3;
-  correction.placeholder = 'Your correction stays separate from the original resume text.';
-  panel.append(label, correction);
+function setReady(ready) {
+  state.ready=ready;
+  window.dispatchEvent(new CustomEvent('career:setup-state',{detail:{ready}}));
+}
+function changed() {state.dirty=true;setReady(false);}
+function renderSummary(passages, tagText, version, draft, review = null) {
+  $('#facts-panel').hidden=false;$('#empty-facts').hidden=true;
+  $('#summary-tag').textContent=tagText;
+  $('#summary-version').textContent=`Resume v${version}${review ? ` · confirmed with scope v${state.scopeVersion}` : ' · review needed'}`;
+  state.suggestedSummary=draft?.text || '';
+  $('#resume-summary').value=review?.text || state.suggestedSummary;
+  $('#summary-confirmed').checked=Boolean(review?.text);
+  $('#summary-state').textContent=review?.text?'Saved and confirmed':'Review needed';
+  const sources=$('#summary-sources');sources.replaceChildren();
+  for(const p of passages || []){const row=document.createElement('p');row.textContent=`${p.reference}: ${p.text}`;sources.append(row);}
+}
+function clearForm(){
+  state.resume=null;state.sample=false;state.pending=null;state.dirty=false;state.optionalFacts={};state.hardConstraints=[];
+  $('#resume-file').value='';$('#upload-resume').disabled=true;$('#facts-panel').hidden=true;$('#empty-facts').hidden=false;
+  $('#resume-summary').value='';$('#summary-confirmed').checked=false;$('#answer-panel').hidden=true;
+  for(const id of ['start-date','end-date','role-interests','location','available-hours','available-locations','minimum-pay','pay-currency','authorized-us','remote-available'])$('#'+id).value='';
+  $('#internship').checked=false;$('#entry-level').checked=false;
+  $('#file-feedback').textContent='Choose a resume to start your new setup. Saved originals are retained.';
+  $('#question-kind').textContent='NEW SETUP';$('#question-heading').textContent='Ready for a fresh start';
+  $('#question-text').textContent='Upload your resume and confirm its summary and search focus.';
+  $('#question-detail').textContent='Your earlier opportunities and downloads remain on the Opportunities page.';
+  setReady(false);
 }
 async function toBase64(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -84,32 +61,43 @@ async function context(viewOnly) {
   if (data.scope?.version_number !== undefined) state.scopeVersion = data.scope.version_number;
   if (data.pending_questions?.length) showPending(data.pending_questions[0]);
   if (data.pending) showPending(data.pending);
+  state.workspaceVersion=data.workspace_version ?? state.workspaceVersion;
+  if(data.setup_reset)clearForm();
   if (data.pending_resume) {
     state.resume = { id: data.pending_resume.id, version_number: data.pending_resume.version_number };
-    renderPassages(data.pending_resume.passages, 'UPLOADED RESUME', data.pending_resume.version_number);
-    $('#file-feedback').textContent = 'Your uploaded original is stored privately. Confirm the passages you trust to finish setup.';
-    say('Resume uploaded. Confirm at least one passage or write a correction, then save your choices.');
+    renderSummary(data.pending_resume.passages, 'UPLOADED RESUME', data.pending_resume.version_number,data.pending_resume.summary_draft);
+    $('#file-feedback').textContent = 'Your original is stored privately. Review and confirm the summary below.';
+    say('Resume uploaded. Review the summary, make changes if needed, then confirm and save your choices.');
   }
   if (data.status === 'complete') {
     if (!data.pending_questions?.length) {
       state.pending = null;
       $('#answer-panel').hidden = true;
-      $('#question-kind').textContent = 'SETUP READY';
-      $('#question-heading').textContent = 'Ready for the next step';
+      $('#question-kind').textContent = data.summary_review_required?'SUMMARY REVIEW':'SETUP READY';
+      $('#question-heading').textContent = data.summary_review_required?'Review your resume summary':'Ready for the next step';
       $('.question-icon').textContent = '✓';
-      $('#question-text').textContent = 'Your resume and search choices are confirmed.';
-      $('#question-detail').textContent = 'Open Opportunities to start discovery. Fitness recommendations will be added in G3.';
+      $('#question-text').textContent = data.summary_review_required?'Confirm the editable summary before your next search.':'Your resume and search choices are confirmed.';
+      $('#question-detail').textContent = 'Open Opportunities to search and review evidence-backed fit assessments.';
     }
     state.resume = { id: data.resume.id, version_number: data.resume.version_number };
-    renderPassages(data.resume.extracted_passages, 'SAVED RESUME', data.resume.version_number,
-      data.resume.confirmed_passage_ids || []);
+    renderSummary(data.resume.extracted_passages, 'SAVED RESUME', data.resume.version_number, data.summary_draft, data.scope.resume_review);
     $('#start-date').value = data.scope.start_date;
     $('#end-date').value = data.scope.end_date;
     $('#internship').checked = data.scope.role_types.includes('internship');
     $('#entry-level').checked = data.scope.role_types.includes('entry-level');
     $('#role-interests').value = data.scope.role_interests.join(', ');
     $('#location').value = data.scope.location_preference || '';
-    say(data.first_run_empty ? 'Setup saved. No opportunities have been logged yet.' : 'Setup saved and opportunity history is available.');
+    state.optionalFacts = data.scope.optional_facts || {};
+    state.hardConstraints = data.scope.hard_constraints || [];
+    $('#available-hours').value = state.optionalFacts.available_hours_per_week ?? '';
+    $('#available-locations').value = (state.optionalFacts.available_locations || []).join('; ');
+    $('#remote-available').value = state.optionalFacts.remote_available === undefined ? '' : state.optionalFacts.remote_available ? 'yes' : 'no';
+    $('#authorized-us').value = state.optionalFacts.authorized_to_work_us === undefined ? '' : state.optionalFacts.authorized_to_work_us ? 'yes' : 'no';
+    $('#minimum-pay').value = state.optionalFacts.minimum_hourly_pay?.amount ?? '';
+    $('#pay-currency').value = state.optionalFacts.minimum_hourly_pay?.currency || '';
+    state.dirty=false;setReady(!data.summary_review_required);
+    if(data.summary_review_required)say('Review and confirm the new summary before your next search. Your saved history is retained.');
+    else say(data.first_run_empty ? 'Setup saved. No opportunities have been logged yet.' : 'Setup saved and opportunity history is available.');
   } else if (data.question) say(data.recorded_response
     ? `Your ${data.recorded_response.response_kind} response was recorded. ${data.question}` : data.question);
   return data;
@@ -128,11 +116,11 @@ async function initialize() {
     const banner = $('#mode-banner');
     banner.className = `preview-banner ${state.connected ? 'connected' : session.authenticated ? 'disconnected' : 'error'}`;
     banner.textContent = state.connected
-      ? 'PRIVATE WORKSPACE · Resume storage connected · G2 discovery preview · Fitness, preparation, and email are later features'
+      ? 'PRIVATE WORKSPACE · Resume storage connected · Evidence-backed fitness · Preparation drafts · Email coming later'
       : session.authenticated
         ? 'SYNTHETIC PREVIEW · Storage is not connected. No personal files are uploaded or saved.'
         : 'SIGN-IN REQUIRED · This setup belongs to a signed-in account.';
-    $('#mode-pill').textContent = state.connected ? 'Private G2 preview' : 'Preview mode';
+    $('#mode-pill').textContent = state.connected ? 'Private preview' : 'Preview mode';
     if (state.connected) await context(true);
   } catch {
     $('#mode-banner').className = 'preview-banner disconnected';
@@ -141,23 +129,22 @@ async function initialize() {
   }
 }
 $('#load-sample').addEventListener('click', () => {
-  state.sample = true;
-  state.resume = null;
-  $('#resume-file').value = '';
-  $('#upload-resume').disabled = true;
-  $('#live-facts').hidden = true;
-  $('#sample-facts').hidden = false;
-  $('#facts-panel').hidden = false;
-  $('#empty-facts').hidden = true;
-  $('#file-feedback').textContent = 'Fictional sample loaded locally. It cannot be saved to your account.';
-  say('Synthetic sample loaded locally. Nothing has been saved.');
-  $('#facts-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  state.sample=true;state.resume=null;$('#resume-file').value='';$('#upload-resume').disabled=true;
+  const draft={text:'Education\nB.S. Information Systems, Minor in Applied Statistics.\n\nExperience\nData Volunteer, Campus Food Bank, March–August 2026. Cleaned inventory records and created a Power BI dashboard.\n\nSkills\nMicrosoft Excel, SQL, Power BI, and data cleaning.'};
+  renderSummary([{text:draft.text,reference:'Maya Rivera fictional sample'}],'SYNTHETIC RESUME','sample',draft);
+  $('#file-feedback').textContent='Fictional sample loaded locally. It cannot be saved to your account.';
+  changed();say('Synthetic sample for exploration. Upload a resume to save your own setup.');
 });
+$('#resume-summary').addEventListener('input',()=>{$('#summary-confirmed').checked=false;$('#summary-state').textContent='Edited · confirm again';changed();});
+$('#summary-confirmed').addEventListener('change',()=>{$('#summary-state').textContent=$('#summary-confirmed').checked?'Confirmed · save your setup':'Review needed';changed();});
+$('#restore-summary').addEventListener('click',()=>{$('#resume-summary').value=state.suggestedSummary;$('#summary-confirmed').checked=false;$('#summary-state').textContent='Suggested summary restored · review and confirm';changed();});
+for(const node of document.querySelectorAll('#setup input:not(#resume-file):not(#summary-confirmed),#setup select'))node.addEventListener('change',changed);
 $('#resume-file').addEventListener('change', () => {
   const file = $('#resume-file').files?.[0];
   if (!file) return;
   state.sample = false;
   state.resume = null;
+  changed();
   $('#facts-panel').hidden = true;
   $('#empty-facts').hidden = false;
   const permitted = /\.(pdf|docx|txt)$/i.test(file.name);
@@ -166,7 +153,7 @@ $('#resume-file').addEventListener('change', () => {
   $('#file-feedback').textContent = !permitted ? 'Choose a PDF, DOCX, or TXT file.'
     : file.size === 0 ? 'This file is empty.'
       : file.size > 5 * 1024 * 1024 ? 'This file is over the 5 MB limit.'
-        : state.connected ? `${file.name} selected. Extract it to review source-linked passages.`
+        : state.connected ? `${file.name} selected. Extract it to review your summary.`
           : `${file.name} selected. Storage is not connected; it has not been uploaded.`;
   say('Nothing has been saved.');
 });
@@ -183,9 +170,10 @@ $('#upload-resume').addEventListener('click', async () => {
       return;
     }
     state.resume = data.resume;
-    renderPassages(data.passages || [], 'UPLOADED RESUME', data.resume.version_number);
-    $('#file-feedback').textContent = `Original stored privately. ${data.character_count} characters extracted. Confirm the passages you trust.`;
-    say('Resume uploaded. Confirm at least one passage or write a correction, then save your choices.');
+    renderSummary(data.passages || [], 'UPLOADED RESUME', data.resume.version_number, data.summary_draft);
+    changed();
+    $('#file-feedback').textContent = `Original stored privately. ${data.character_count} characters extracted. Review and confirm the summary below.`;
+    say('Resume uploaded. Revise the summary if needed, confirm the final text, then save your choices.');
   } catch { $('#file-feedback').textContent = 'Upload could not be completed. Please try again.'; }
   finally { $('#upload-resume').disabled = false; }
 });
@@ -196,20 +184,26 @@ $('#review-preview').addEventListener('click', async () => {
   const start = $('#start-date').value, end = $('#end-date').value;
   const roles = [['internship', $('#internship')], ['entry-level', $('#entry-level')]].filter(([, node]) => node.checked).map(([role]) => role);
   const interests = $('#role-interests').value.split(',').map(item => item.trim()).filter(Boolean);
-  const correction = $('#live-correction')?.value.trim() || '';
-  const confirmed = [...$('#live-facts').querySelectorAll('.fact-check:checked')].map(node => node.value);
-  if (!confirmed.length && !correction) { say('Confirm at least one source passage or write a correction.'); return; }
+  const summary=$('#resume-summary').value.trim();
+  if(!$('#summary-confirmed').checked || summary.length<20){say('Review your summary and confirm the final text before saving.');$('#resume-summary').focus();return;}
   if (!start || !end || end < start) { say('Choose a valid earliest and latest start date.'); return; }
   if (!roles.length) { say('Choose internships, entry-level jobs, or both.'); return; }
   if (!interests.length) { say('Enter at least one role interest.'); return; }
+  const optionalFacts = {...(state.optionalFacts || {})};
+  for (const field of ['available_hours_per_week','available_locations','remote_available','authorized_to_work_us','minimum_hourly_pay']) delete optionalFacts[field];
+  const hours=$('#available-hours').value, places=$('#available-locations').value.trim(), pay=$('#minimum-pay').value, currency=$('#pay-currency').value.trim().toUpperCase();
+  if(hours!=='')optionalFacts.available_hours_per_week=Number(hours);
+  if(places)optionalFacts.available_locations=places.split(';').map(s=>s.trim()).filter(Boolean);
+  for(const [id,key] of [['remote-available','remote_available'],['authorized-us','authorized_to_work_us']])if($('#'+id).value)optionalFacts[key]=$('#'+id).value==='yes';
+  if(pay!==''||currency){if(pay===''||!/^[A-Z]{3}$/.test(currency)){say('An hourly minimum needs both an amount and a three-letter currency.');return;}optionalFacts.minimum_hourly_pay={amount:Number(pay),currency};}
   $('#review-preview').disabled = true;
   say('Saving your confirmed setup…');
   try {
     const { data } = await api('/api/g1/confirm', {
       resumeId: state.resume.id, expectedResumeVersion: state.resume.version_number,
-      expectedScopeVersion: state.scopeVersion, confirmedPassageIds: confirmed, correction,
+      expectedScopeVersion: state.scopeVersion, expectedWorkspaceVersion: state.workspaceVersion, resumeReview:{text:summary,confirmed:true},
       scope: { startDate: start, endDate: end, roleTypes: roles, roleInterests: interests,
-        locationPreference: $('#location').value.trim(), optionalFacts: {}, hardConstraints: [] },
+        locationPreference: $('#location').value.trim(), optionalFacts, hardConstraints: state.hardConstraints || [] },
     });
     if (!data.ok) { say(data.question || `Setup was not saved (${data.code}). Refresh if a newer version exists.`); return; }
     state.scopeVersion = data.scope.version_number;
@@ -220,6 +214,7 @@ $('#review-preview').addEventListener('click', async () => {
 });
 $('#check-context').addEventListener('click', async () => {
   if (!state.connected) { say('Private setup storage is not connected yet.'); return; }
+  if(state.dirty){say('Confirm and save your current edits before checking readiness.');return;}
   try { await context(false); }
   catch { say('Readiness check could not be completed. No search was started.'); }
 });
@@ -241,5 +236,17 @@ $('#answer-submit').addEventListener('click', async () => {
     say('Response saved. Check readiness again when your setup is complete.');
   } catch { say('Response could not be saved. Please try again.'); }
 });
+$('#reset-setup').addEventListener('click',()=>{$('#reset-feedback').textContent='';$('#reset-dialog').showModal();});
+$('#reset-cancel').addEventListener('click',()=>$('#reset-dialog').close());
+$('#reset-confirm').addEventListener('click',async()=>{
+  $('#reset-confirm').disabled=true;
+  try{
+    if(state.connected){const {data}=await api('/api/g1/reset',{confirm:true,expectedWorkspaceVersion:state.workspaceVersion});
+      if(!data.ok){$('#reset-feedback').textContent=data.message||'Reset could not be confirmed. Reload to inspect your setup.';return;}state.workspaceVersion=data.workspace_version;}
+    clearForm();$('#reset-dialog').close();say('New setup started. Your saved history and downloads are retained.');window.CareerPages?.navigate('setup');
+  }catch{$('#reset-feedback').textContent='Reset could not be confirmed. Reload to inspect your setup.';}
+  finally{$('#reset-confirm').disabled=false;}
+});
+window.addEventListener('beforeunload',event=>{if(state.dirty){event.preventDefault();event.returnValue='';}});
 document.body.dataset.previewScript = 'ready';
 initialize();

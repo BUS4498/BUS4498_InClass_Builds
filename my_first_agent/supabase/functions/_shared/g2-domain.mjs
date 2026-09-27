@@ -138,12 +138,12 @@ export function g2ParsePosting(html, url, authority, now) {
   return { ok: true, posting: { employer, role, role_type, job_id: jobId, url, authority, checked_at: now,
     location: locations.join('; ') || null, remote: j.jobLocationType === 'TELECOMMUTE' ? true : null,
     description, requirements: fields, start_date: date(j.jobStartDate || j.startDate), deadline: date(j.validThrough),
-    posted_date: date(j.datePosted), compensation: pay, availability: closed ? 'closed' : authority === 'official USAJOBS' && date(j.validThrough) ? 'open' : 'unknown',
+    posted_date: date(j.datePosted), work_hours: typeof j.workHours==='string'?g2Text(j.workHours):null, compensation: pay, availability: closed ? 'closed' : authority === 'official USAJOBS' && date(j.validThrough) ? 'open' : 'unknown',
     evidence: [{ id: 'posting:title', text: role }, { id: 'posting:employer', text: employer }, { id: 'posting:description', text: description },
       ...fields.map((text,i)=>({id:`posting:criterion:${i+1}`,text}))] } };
 }
 export function g2Material(posting) {
-  const keys = ['employer','role','location','remote','start_date','deadline','compensation','availability','requirements','description'];
+  const keys = ['employer','role','location','remote','start_date','deadline','compensation','work_hours','availability','requirements','description'];
   return JSON.stringify(keys.map(k=>[k,typeof posting[k]==='boolean'?posting[k]:Array.isArray(posting[k])?posting[k].map(g2Normalize):g2Normalize(posting[k])]));
 }
 export function g2Validate(lead, scope, history = []) {

@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Career Opportunity Prep · Student setup</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
-  <script src="g2.js" defer></script>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/pages.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/g3.js" defer></script>
+  <script src="/library.js" defer></script>
+  <script src="/g2.js" defer></script><script src="/g4.js" defer></script>
 </head>
 <body>
   <div id="mode-banner" class="preview-banner" role="status">Checking private setup connection…</div>
@@ -15,16 +18,17 @@
     <aside class="sidebar" aria-label="Site navigation">
       <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>Career Prep <small>Opportunity agent</small></span></div>
       <nav aria-label="Main navigation">
-        <a class="nav-item active" href="#setup" aria-current="page"><span aria-hidden="true">◫</span> My setup</a>
-        <a class="nav-item" href="#opportunities"><span aria-hidden="true">⌕</span> Opportunities</a>
-        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">▤</span> Preparation <em>Later</em></span>
-        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">◷</span> Schedule <em>Later</em></span>
+        <a class="nav-item active" href="/setup" data-page-link="setup" aria-current="page"><span aria-hidden="true">◫</span> My setup</a>
+        <a class="nav-item" href="/opportunities" data-page-link="opportunities"><span aria-hidden="true">⌕</span> Opportunities</a>
+        <a class="nav-item" href="/preparation" data-page-link="preparation"><span aria-hidden="true">▤</span> Preparation</a>
+        <a class="nav-item" href="/schedule" data-page-link="schedule"><span aria-hidden="true">◷</span> Schedule <em>Later</em></a>
       </nav>
       <div class="sidebar-note"><span class="note-dot"></span><div><strong>Private by design</strong><p>Your resume and choices belong to your signed-in account when storage is connected.</p></div></div>
     </aside>
-    <main id="setup" class="main-content">
+    <main class="main-content">
+      <section id="setup" data-page="setup">
       <div class="topline"><span>STUDENT WORKSPACE <span class="slash">/</span> SETUP</span><span id="mode-pill" class="preview-pill">Checking connection</span></div>
-      <header class="page-header"><div><p class="eyebrow">Step 1 of your career search</p><h1>Start with what you already have.</h1><p class="lede">Add your resume, check what we read, and tell us which opportunities you want to see. You can change your choices later.</p></div><div id="account-avatar" class="avatar" aria-label="Signed-in account">?</div></header>
+      <header class="page-header"><div><p class="eyebrow">Step 1 of your career search</p><h1 tabindex="-1">Start with what you already have.</h1><p class="lede">Add your resume, check what we read, and tell us which opportunities you want to see. You can change your choices later.</p></div><div id="account-avatar" class="avatar" aria-label="Signed-in account">?</div></header>
       <div class="layout">
         <div class="primary-column">
           <section class="card" aria-labelledby="resume-title">
@@ -37,18 +41,17 @@
           </section>
 
           <section class="card" aria-labelledby="facts-title">
-            <div class="section-heading"><div class="step-num">02</div><div><h2 id="facts-title">Check the facts</h2><p>Each detail stays linked to where it came from.</p></div></div>
+            <div class="section-heading"><div class="step-num">02</div><div><h2 id="facts-title">Check the facts</h2><p>Review our understanding of your resume. Revise it, then confirm the final summary.</p></div></div>
             <div id="empty-facts" class="empty-state"><span aria-hidden="true">◇</span><p>Upload a resume or load the synthetic sample to review extracted details.</p></div>
             <div id="facts-panel" hidden>
-              <div id="live-facts" hidden></div>
-              <div id="sample-facts">
-              <div class="facts-head"><span class="sample-tag">SYNTHETIC RESUME</span><span>Version: resume-fixture-v1</span></div>
-              <div class="fact"><div><strong>Education</strong><p>B.S. Information Systems, Minor in Applied Statistics</p><small>Source: EDUCATION · resume line 7</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
-              <div class="fact"><div><strong>Experience</strong><p>Data Volunteer, Campus Food Bank · Mar–Aug 2026</p><small>Source: WORK EXPERIENCE · resume lines 12–13</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
-              <div class="fact"><div><strong>Skills</strong><p>Microsoft Excel, SQL, Power BI, data cleaning</p><small>Source: SKILLS &amp; HONORS · resume line 51</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
-              <label class="form-label" for="fact-correction">Anything to correct or add?</label><textarea id="fact-correction" rows="3" placeholder="Write a correction in your own words. It will stay separate from the original resume text."></textarea>
-              <p class="hint">Blank optional facts remain unknown. A correction does not rewrite your original resume.</p>
-              </div>
+              <div class="facts-head"><span id="summary-tag" class="sample-tag">RESUME SUMMARY</span><span id="summary-version"></span></div>
+              <p class="hint">This draft uses selected wording from your resume. Check for omissions and correct anything that misrepresents you. Only the summary you confirm is used as your reviewed background.</p>
+              <label class="form-label" for="resume-summary">Our understanding of your resume</label>
+              <textarea id="resume-summary" rows="12" maxlength="6000" aria-describedby="summary-help"></textarea>
+              <p id="summary-help" class="hint">You can add, remove, or rewrite details. Your original upload is preserved. Missing details stay unknown.</p>
+              <div class="form-actions"><button id="restore-summary" type="button" class="text-button">Restore suggested summary</button><span id="summary-state" role="status">Review needed</span></div>
+              <label class="summary-confirm"><input type="checkbox" id="summary-confirmed"> I have reviewed the summary and confirm that it accurately describes my background.</label>
+              <details class="source-disclosure"><summary>Compare with the original extracted text</summary><div id="summary-sources"></div></details>
             </div>
           </section>
 
@@ -58,33 +61,52 @@
             <fieldset><legend>Role types</legend><div class="choices"><label><input id="internship" type="checkbox" checked> Internships</label><label><input id="entry-level" type="checkbox" checked> Entry-level jobs</label></div></fieldset>
             <label class="form-label" for="role-interests">Role interests</label><input id="role-interests" type="text" value="Data analytics, data operations" placeholder="e.g., data analytics, marketing">
             <label class="form-label" for="location">Location preference <span class="optional">Optional</span></label><input id="location" type="text" value="Seattle area or remote" placeholder="e.g., Seattle area or remote">
-            <p class="hint">The sample’s work authorization, availability, and Tableau experience are unknown. You can add those later if a posting needs them.</p>
+            <details><summary>Optional facts for a clearer assessment</summary>
+              <p class="hint">Supply only facts you can confirm. Blank or unknown answers stay unknown. Confirm setup to save these with a new scope version.</p>
+              <div class="form-grid"><div><label class="form-label" for="available-hours">Available hours per week</label><input id="available-hours" type="number" min="0" max="168" step="0.5" placeholder="Unknown"></div>
+              <div><label class="form-label" for="remote-available">Can you work remotely?</label><select id="remote-available"><option value="">Unknown / prefer not to answer</option><option value="yes">Yes</option><option value="no">No</option></select></div></div>
+              <label class="form-label" for="available-locations">Locations where you can work</label><input id="available-locations" type="text" placeholder="e.g., Seattle, WA, US; Portland, OR, US"><p class="hint">Separate locations with semicolons. A different label stays unresolved until confirmed.</p>
+              <label class="form-label" for="authorized-us">Are you currently authorized to work in the United States?</label><select id="authorized-us"><option value="">Unknown / prefer not to answer</option><option value="yes">Yes</option><option value="no">No</option></select><p class="hint">This answer does not establish sponsorship availability or other employer eligibility requirements.</p>
+              <div class="form-grid"><div><label class="form-label" for="minimum-pay">Minimum hourly pay you would accept</label><input id="minimum-pay" type="number" min="0" step="0.01" placeholder="No confirmed minimum"></div><div><label class="form-label" for="pay-currency">Currency (three letters)</label><input id="pay-currency" type="text" maxlength="3" placeholder="e.g., USD"></div></div>
+            </details>
           </section>
-          <div class="form-actions"><button id="review-preview" class="primary-button" type="button">Confirm setup <span aria-hidden="true">→</span></button><button id="check-context" class="secondary-button" type="button">Check readiness</button><span id="review-status" role="status">Nothing has been saved.</span></div>
+          <div class="form-actions"><button id="review-preview" class="primary-button" type="button">Confirm setup <span aria-hidden="true">→</span></button><button id="check-context" class="secondary-button" type="button">Check readiness</button><button id="reset-setup" class="text-button" type="button">Reset setup</button><span id="review-status" role="status">Nothing has been saved.</span></div>
         </div>
         <aside class="right-column" aria-label="Setup guidance">
-          <section class="summary-card"><p class="eyebrow">YOUR SETUP</p><h2>Make each match make sense.</h2><p>A future fit score will show the resume and posting evidence behind it. Missing information will become a question, not a guessed answer.</p><div class="summary-step"><span>1</span><div><strong>Upload</strong><small>Keep your original resume private</small></div></div><div class="summary-step"><span>2</span><div><strong>Confirm</strong><small>Review extracted facts and corrections</small></div></div><div class="summary-step"><span>3</span><div><strong>Choose</strong><small>Set role types and timeframe</small></div></div></section>
+          <section class="summary-card"><p class="eyebrow">YOUR SETUP</p><h2>Make each match make sense.</h2><p>Each fit score shows the resume and posting evidence behind it. Missing student facts become specific questions.</p><div class="summary-step"><span>1</span><div><strong>Upload</strong><small>Keep your original resume private</small></div></div><div class="summary-step"><span>2</span><div><strong>Confirm</strong><small>Review and confirm your summary</small></div></div><div class="summary-step"><span>3</span><div><strong>Choose</strong><small>Set role types and timeframe</small></div></div></section>
           <section class="question-card"><div class="question-icon" aria-hidden="true">?</div><p id="question-kind" class="eyebrow">EXAMPLE CLARIFICATION</p><h2 id="question-heading">We need one detail from you</h2><p id="question-text">“What is the earliest date you could start? Choose a date or tell us it is not yet known.”</p><small id="question-detail">A real question will name the missing item and remain pending until you answer. This is a sample.</small><div id="answer-panel" hidden><label class="form-label" for="answer-kind">Your response</label><select id="answer-kind"><option value="confirmed">Confirmed</option><option value="corrected">Correction</option><option value="unavailable">Information unavailable</option></select><textarea id="answer-text" rows="3" placeholder="Answer in your own words"></textarea><button id="answer-submit" class="secondary-button" type="button">Save response</button></div></section>
-          <section class="boundary-card"><strong>Before a search runs</strong><p>Confirm your resume, role types, and timeframe, then open Opportunities below. Fitness scoring, preparation, and email arrive in later build groups.</p></section>
+          <section class="boundary-card"><strong>Before a search runs</strong><p>Confirm your resume, role types, and timeframe, then open Opportunities. Review cited fit evidence and separate eligibility before deciding what to do.</p></section>
         </aside>
       </div>
-      <section id="opportunities" class="discovery-section" aria-labelledby="opportunities-title">
-        <div class="page-header"><div><p class="eyebrow">Step 2 · Discovery and log</p><h1 id="opportunities-title">See what is out there.</h1><p class="lede">Search within your saved choices. Each posting keeps its source, verification result, and place in your private opportunity log.</p></div></div>
+      </section>
+      <section id="opportunities" data-page="opportunities" hidden class="discovery-section" aria-labelledby="opportunities-title">
+        <div class="page-header"><div><p class="eyebrow">Step 2 · Discovery and log</p><h1 id="opportunities-title" tabindex="-1">See what is out there.</h1><p class="lede">Search within your saved choices. Each posting keeps its source, verification result, and place in your private opportunity log.</p></div></div>
         <div class="card discovery-controls">
-          <p><strong>Discovery preview</strong> · Postings are not scored yet. A verified source does not establish your eligibility or fitness.</p>
+          <p><strong>Search and assess</strong> · Get an evidence-backed 1–5 fit score, clear unknowns, and a suggested next step. The score does not establish eligibility or predict an offer.</p>
           <div class="form-actions"><button id="g2-start" class="primary-button" type="button">Collect opportunities</button><button id="g2-synthetic" class="secondary-button" type="button">Try a synthetic run</button><button id="g2-refresh" class="text-button" type="button">Inspect saved runs</button></div>
           <p id="g2-message" class="field-feedback" role="status">Confirm your setup before starting a search.</p>
           <p class="hint">Up to 8 search requests, 40 screened leads, and 24 direct posting reads. Requests are never retried automatically. Keep this tab open during a manual run.</p>
         </div>
+        <section class="card library-card" aria-labelledby="library-title"><h2 id="library-title">Manage saved opportunities</h2><p>Archive older postings to tidy your results. You can restore them at any time. Earlier scores, answers, and spreadsheet snapshots are preserved.</p><div class="form-actions"><label>Show<select id="library-filter"><option value="active">Active</option><option value="archived">Archived</option></select></label><label>Source<select id="library-mode"><option value="all">All postings</option><option value="live">Live postings</option><option value="synthetic">Synthetic samples</option></select></label><button type="button" class="text-button" id="library-refresh">Refresh saved list</button></div><div class="form-actions"><label class="confirm-summary"><input type="checkbox" id="library-all">Select all shown</label><span id="library-count" role="status"></span><button class="secondary-button" id="library-action" type="button" disabled>Archive selected</button></div><div id="library-items" class="library-items"></div><p id="library-message" role="status" class="hint"></p></section>
         <div id="g2-run-list" class="run-list" aria-label="Saved discovery runs"></div>
         <div id="g2-result" hidden>
           <div class="card"><p id="g2-notice" class="sample-tag"></p><h2 id="g2-heading">Discovery progress</h2><p id="g2-detail"></p><div id="g2-counters" class="counter-grid"></div><p id="g2-storage"></p><div class="form-actions"><button id="g2-continue" class="secondary-button" type="button" hidden>Continue saved run</button><button id="g2-download" class="primary-button" type="button" hidden>Download opportunity log (.xlsx)</button><a id="g2-save-file" class="secondary-button" hidden>Save verified workbook</a></div><div id="g2-issues" role="status"></div></div>
-          <section class="card"><h2>All screened postings</h2><p class="hint">Source-verified postings are shown first. Each group keeps discovery order; fitness ranking and recommended actions arrive in G3.</p><div id="g2-candidates"></div></section>
+          <section class="card"><h2>Your opportunity results</h2><p class="hint">A score always comes with its evidence. Missing student facts become specific questions; missing employer facts stay in the source queue. Earlier discovery-only runs keep their original status.</p><div id="g2-candidates"></div></section>
           <section class="card"><h2>Source coverage</h2><p class="hint">A source can be skipped or inaccessible. Search-engine links remain leads until a permitted authoritative page is verified.</p><div class="table-scroll"><table class="coverage-table"><thead><tr><th>Source</th><th>Status</th><th>Requests</th><th>Leads</th><th>Reads</th><th>Verified</th><th>Details</th></tr></thead><tbody id="g2-coverage"></tbody></table></div></section>
         </div>
-        <section id="g2-questions" class="card" hidden><h2>Validation questions</h2><div id="g2-question-list"></div></section>
+        <section id="g2-questions" class="card" hidden><h2>Your posting questions</h2><p class="hint">Answer from your own experience, or choose “I do not know.” Your response is saved; it does not automatically change a score or start another search.</p><div id="g2-question-list"></div></section>
+      </section>
+      <section id="preparation" data-page="preparation" hidden>
+        <header class="page-header"><div><p class="eyebrow">Step 3 · Prepare with purpose</p><h1 tabindex="-1">Build your next application.</h1><p class="lede">Choose an assessed opportunity to guide your resume, cover letter, and interview practice.</p></div></header>
+        <div class="card"><h2>Prepare for one saved posting</h2><p>Recheck its source and reassess fit using your confirmed setup, then create the one artifact you request. Each output stays a draft until you review it.</p><label class="form-label" for="g4-target">Saved posting</label><select id="g4-target"><option value="">Choose one saved posting</option></select><label class="form-label" for="g4-type">What would you like to prepare?</label><select id="g4-type"><option value="resume_tailoring">Tailored resume draft (.docx)</option><option value="cover_letter">Cover letter draft (.docx)</option><option value="interview_cards">Interview practice cards</option></select><label class="confirm-summary"><input id="g4-consent" type="checkbox">I request this artifact for this one posting using my confirmed resume and choices.</label><p class="hint">No new job search. Up to one posting read, six assessment requests, one next-action request, and one preparation request. Synthetic postings use fixtures with no external calls. Keep this tab open while the request runs.</p><div class="form-actions"><button id="g4-start" class="primary-button" type="button">Create requested draft</button><button id="g4-refresh" class="secondary-button" type="button">Refresh saved preparation</button></div><p id="g4-message" role="status"></p></div><div id="g4-progress" class="card" hidden><h2 id="g4-run">Preparation progress</h2><p id="g4-counts"></p><p id="g4-outcome"></p><button id="g4-continue" class="secondary-button" type="button" hidden>Continue saved request</button></div><div id="g4-drafts"></div>
+      </section>
+      <section id="schedule" data-page="schedule" hidden>
+        <header class="page-header"><div><p class="eyebrow">Step 4 · Stay informed</p><h1 tabindex="-1">Keep your search moving.</h1><p class="lede">Choose when to search and receive a concise digest of your opportunities.</p></div></header>
+        <div class="card"><span class="sample-tag">COMING IN A LATER FEATURE GROUP</span><h2>Daily or weekly updates</h2><p>Scheduling will let you choose a cadence, time, timezone, and confirmed email recipient.</p><p class="hint">No schedule is active and no email is being sent. Microsoft and Gmail setup will be added in the scheduling feature group.</p><a class="secondary-button" href="/setup" data-page-link="setup">Review search preferences</a></div>
       </section>
     </main>
   </div>
+  <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Start a new setup?</h2><p>Your current form will be cleared. Your saved resumes, opportunities, answers, and downloads will remain available.</p><p>You will need to upload a resume and confirm a new summary and search focus before another search.</p><div class="form-actions"><button id="reset-cancel" class="secondary-button" type="button">Keep my setup</button><button id="reset-confirm" class="primary-button" type="button">Start new setup</button></div><p id="reset-feedback" role="status"></p></dialog>
+  <dialog id="cleanup-dialog" aria-labelledby="cleanup-title"><h2 id="cleanup-title">Archive selected postings?</h2><p id="cleanup-summary"></p><p>This changes which postings appear in your results. Your saved evidence, answers, and spreadsheet downloads are preserved. Archived postings remain in the Archived view and can be restored.</p><p id="cleanup-feedback" role="status"></p><div class="form-actions"><button type="button" id="cleanup-cancel" class="secondary-button">Cancel</button><button type="button" id="cleanup-confirm" class="primary-button">Confirm</button></div></dialog>
 </body>
 </html>
