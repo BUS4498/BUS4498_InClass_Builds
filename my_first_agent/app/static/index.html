@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Career Opportunity Prep · Student setup</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="mode-banner" class="preview-banner" role="status">Checking private setup connection…</div>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Site navigation">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>Career Prep <small>Opportunity agent</small></span></div>
+      <nav aria-label="Main navigation">
+        <a class="nav-item active" href="#setup" aria-current="page"><span aria-hidden="true">◫</span> My setup</a>
+        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">⌕</span> Opportunities <em>Later</em></span>
+        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">▤</span> Preparation <em>Later</em></span>
+        <span class="nav-item unavailable" aria-disabled="true"><span aria-hidden="true">◷</span> Schedule <em>Later</em></span>
+      </nav>
+      <div class="sidebar-note"><span class="note-dot"></span><div><strong>Private by design</strong><p>Your resume and choices belong to your signed-in account when storage is connected.</p></div></div>
+    </aside>
+    <main id="setup" class="main-content">
+      <div class="topline"><span>STUDENT WORKSPACE <span class="slash">/</span> SETUP</span><span id="mode-pill" class="preview-pill">Checking connection</span></div>
+      <header class="page-header"><div><p class="eyebrow">Step 1 of your career search</p><h1>Start with what you already have.</h1><p class="lede">Add your resume, check what we read, and tell us which opportunities you want to see. You can change your choices later.</p></div><div id="account-avatar" class="avatar" aria-label="Signed-in account">?</div></header>
+      <div class="layout">
+        <div class="primary-column">
+          <section class="card" aria-labelledby="resume-title">
+            <div class="section-heading"><div class="step-num">01</div><div><h2 id="resume-title">Your resume</h2><p>Keep the original. Review extracted details before any search.</p></div></div>
+            <label class="dropzone" for="resume-file"><span class="upload-icon" aria-hidden="true">↥</span><strong>Choose a resume to upload</strong><span>PDF, Word (.docx), or plain text · Up to 5 MB</span><span class="choose">Browse files</span></label>
+            <input id="resume-file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+            <p id="file-feedback" class="field-feedback" role="status">Choose a file to review the extraction before confirming it.</p>
+            <button id="upload-resume" class="secondary-button" type="button" disabled>Extract and review resume</button>
+            <div class="sample-line"><div><strong>Want to explore first?</strong><span>Use Maya Rivera’s fictional resume.</span></div><button id="load-sample" class="text-button" type="button">Load synthetic sample <span aria-hidden="true">→</span></button></div>
+          </section>
+
+          <section class="card" aria-labelledby="facts-title">
+            <div class="section-heading"><div class="step-num">02</div><div><h2 id="facts-title">Check the facts</h2><p>Each detail stays linked to where it came from.</p></div></div>
+            <div id="empty-facts" class="empty-state"><span aria-hidden="true">◇</span><p>Upload a resume or load the synthetic sample to review extracted details.</p></div>
+            <div id="facts-panel" hidden>
+              <div id="live-facts" hidden></div>
+              <div id="sample-facts">
+              <div class="facts-head"><span class="sample-tag">SYNTHETIC RESUME</span><span>Version: resume-fixture-v1</span></div>
+              <div class="fact"><div><strong>Education</strong><p>B.S. Information Systems, Minor in Applied Statistics</p><small>Source: EDUCATION · resume line 7</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
+              <div class="fact"><div><strong>Experience</strong><p>Data Volunteer, Campus Food Bank · Mar–Aug 2026</p><small>Source: WORK EXPERIENCE · resume lines 12–13</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
+              <div class="fact"><div><strong>Skills</strong><p>Microsoft Excel, SQL, Power BI, data cleaning</p><small>Source: SKILLS &amp; HONORS · resume line 51</small></div><label><input type="checkbox" class="fact-check"> Confirm</label></div>
+              <label class="form-label" for="fact-correction">Anything to correct or add?</label><textarea id="fact-correction" rows="3" placeholder="Write a correction in your own words. It will stay separate from the original resume text."></textarea>
+              <p class="hint">Blank optional facts remain unknown. A correction does not rewrite your original resume.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="scope-title">
+            <div class="section-heading"><div class="step-num">03</div><div><h2 id="scope-title">Choose your search focus</h2><p>These choices set the scope for a future search.</p></div></div>
+            <div class="form-grid"><div><label class="form-label" for="start-date">Earliest start date</label><input id="start-date" type="date" value="2027-06-01"></div><div><label class="form-label" for="end-date">Latest start date</label><input id="end-date" type="date" value="2027-11-30"></div></div>
+            <fieldset><legend>Role types</legend><div class="choices"><label><input id="internship" type="checkbox" checked> Internships</label><label><input id="entry-level" type="checkbox" checked> Entry-level jobs</label></div></fieldset>
+            <label class="form-label" for="role-interests">Role interests</label><input id="role-interests" type="text" value="Data analytics, data operations" placeholder="e.g., data analytics, marketing">
+            <label class="form-label" for="location">Location preference <span class="optional">Optional</span></label><input id="location" type="text" value="Seattle area or remote" placeholder="e.g., Seattle area or remote">
+            <p class="hint">The sample’s work authorization, availability, and Tableau experience are unknown. You can add those later if a posting needs them.</p>
+          </section>
+          <div class="form-actions"><button id="review-preview" class="primary-button" type="button">Confirm setup <span aria-hidden="true">→</span></button><button id="check-context" class="secondary-button" type="button">Check readiness</button><span id="review-status" role="status">Nothing has been saved.</span></div>
+        </div>
+        <aside class="right-column" aria-label="Setup guidance">
+          <section class="summary-card"><p class="eyebrow">YOUR SETUP</p><h2>Make each match make sense.</h2><p>A future fit score will show the resume and posting evidence behind it. Missing information will become a question, not a guessed answer.</p><div class="summary-step"><span>1</span><div><strong>Upload</strong><small>Keep your original resume private</small></div></div><div class="summary-step"><span>2</span><div><strong>Confirm</strong><small>Review extracted facts and corrections</small></div></div><div class="summary-step"><span>3</span><div><strong>Choose</strong><small>Set role types and timeframe</small></div></div></section>
+          <section class="question-card"><div class="question-icon" aria-hidden="true">?</div><p id="question-kind" class="eyebrow">EXAMPLE CLARIFICATION</p><h2 id="question-heading">We need one detail from you</h2><p id="question-text">“What is the earliest date you could start? Choose a date or tell us it is not yet known.”</p><small id="question-detail">A real question will name the missing item and remain pending until you answer. This is a sample.</small><div id="answer-panel" hidden><label class="form-label" for="answer-kind">Your response</label><select id="answer-kind"><option value="confirmed">Confirmed</option><option value="corrected">Correction</option><option value="unavailable">Information unavailable</option></select><textarea id="answer-text" rows="3" placeholder="Answer in your own words"></textarea><button id="answer-submit" class="secondary-button" type="button">Save response</button></div></section>
+          <section class="boundary-card"><strong>Before a search runs</strong><p>Resume facts, role types, and timeframe must be confirmed. Search, scoring, documents, and email are later build groups.</p></section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
