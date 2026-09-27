@@ -1,0 +1,52 @@
+SYNTHETIC TEST RESUME - FICTIONAL PERSON, ORGANIZATIONS, AND CONTACT DETAILS
+Maya Rivera
+(206) 555-0142  |  maya.rivera@example.com  |  linkedin.example/in/maya-rivera
+
+EDUCATION
+University of Cascadia - School of Business | Seattle, WA
+B.S. Information Systems, Minor in Applied Statistics | September 2024 - May 2028
+- GPA: 3.7 | Academic Service List (fictional)
+- Relevant Coursework: Database Systems (SQL), Business Analytics, Data Visualization, Systems Analysis, Business Statistics
+
+WORK EXPERIENCE
+Campus Food Bank | Seattle, WA
+Data Volunteer | March 2026 - August 2026
+- Cleaned weekly inventory records in Microsoft Excel and documented duplicate-item corrections.
+- Built a Power BI dashboard summarizing item categories and weekly stock changes.
+- Presented monthly inventory trends to volunteer coordinators using source-labeled charts.
+
+Student Tech Desk | Seattle, WA
+Technology Support Assistant | September 2025 - Present
+- Logged and prioritized 15-20 support tickets each week, documenting fixes for recurring issues.
+- Helped students diagnose account and software problems and escalated unresolved cases.
+- Prepared short troubleshooting notes for common account and device questions.
+
+Pine Harbor Community Lab | Remote
+Data Intern | June 2025 - August 2025
+- Wrote SQL queries for program attendance reports using a documented test dataset.
+- Compared monthly totals with source records and flagged three duplicate entries for review.
+- Summarized attendance changes for a staff meeting without altering the original records.
+
+Cedar Grove Public Library | Seattle, WA
+Circulation Assistant | June 2024 - August 2024
+- Updated catalog records and answered patron questions at the service desk.
+- Tracked weekly program attendance in a shared spreadsheet.
+- Coordinated room setup for recurring community workshops.
+
+LEADERSHIP & INVOLVEMENT
+Data for Good Student Group | Seattle, WA
+Project Coordinator | September 2025 - Present
+- Organized a six-student team to map nonprofit reporting needs into a prioritized task list.
+- Reviewed dashboard mockups with staff and documented requested changes.
+- Scheduled team check-ins and kept decisions linked to the relevant project notes.
+
+Business Technology Club | Seattle, WA
+Workshop Volunteer | January 2025 - Present
+- Led peer sessions on spreadsheet cleaning and introductory SQL queries.
+- Prepared step-by-step handouts and collected feedback after each session.
+- Revised workshop examples when attendees reported confusing instructions.
+
+SKILLS & HONORS
+Product & Project: User stories, stakeholder interviews, issue tracking, project coordination
+Data & Technical: Microsoft Excel, SQL, Power BI, data cleaning, documentation
+Honors: Academic Service List (fictional)

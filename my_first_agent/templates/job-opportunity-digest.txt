@@ -1,0 +1,19 @@
+CAREER OPPORTUNITIES
+{{run_date}} · {{selected_timeframe}}
+
+{{intro_text}}
+
+BEST ASSESSED MATCHES
+The 1–5 score describes evidence-supported fit. It does not predict an offer or confirm eligibility.
+{{scored_cards_text}}
+
+ONE ANSWER COULD CLARIFY THESE
+{{needs_information_cards_text}}
+
+SEARCH COVERAGE
+{{coverage_text}}
+{{shortfall_text}}
+
+Open your opportunity list and evidence: {{application_url}}
+
+Posting details may change. Check the employer or official source before acting. No application was submitted.
