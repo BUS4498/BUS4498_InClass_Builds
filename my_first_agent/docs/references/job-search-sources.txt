@@ -1,0 +1,21 @@
+Career opportunity discovery source registry
+Checked: 2026-09-26. Sources are candidates for permitted discovery, not eight guaranteed integrations. The active runtime must record attempted, used, skipped, restricted, and inaccessible sources for every run.
+
+Indeed | https://www.indeed.com/jobs | Public job-search surface; use only a permitted access route. Verify an exact employer posting before a recommendation.
+Handshake | https://app.joinhandshake.com/jobs | Student-account and school access may be required. Do not automate login or assume school-only listings are public; user-provided links may be checked through authorized access.
+LinkedIn Jobs | https://www.linkedin.com/jobs/ | Discovery leads only unless authorized access is available. Do not scrape or automate LinkedIn without express permission; verify the employer posting.
+Simplify Jobs | https://simplify.jobs/jobs | Public job-board discovery surface subject to actual access. Verify the employer posting.
+Google Jobs | https://www.google.com/search?q=jobs | Google Search job results are a discovery surface, not a general job-search API. Verify the hiring source behind a result.
+USAJOBS | https://www.usajobs.gov/Search/Results | Official federal source; documented Search API requires an API key. A currently open official announcement may verify a federal role when agency, role, ID, and status match.
+ZipRecruiter | https://www.ziprecruiter.com/jobs | Public job-board discovery surface subject to actual access. Its partner Jobs API manages partner postings and is not assumed to be a job-seeker search API. Verify the employer posting.
+Employer career sites | Employer-specific public careers or authorized applicant-tracking-system pages | Preferred verification source when employer, role, posting ID, content, and retrieval time match. No login or access-control bypass.
+
+Per candidate: preserve lead URL and authoritative posting URL separately, checked time, posting ID when available, source type, access result, and explicit open/closed/unknown status. Deduplicate cross-postings. A secondary listing alone cannot become a scored recommendation or a needs-student-information posting. Do not ask a student to certify missing employer facts. Respect each source's actual permitted route and the workflow's global search, candidate, posting-read, time, and retry limits.
+
+Access references:
+https://support.joinhandshake.com/hc/en-us/articles/218693408-Searching-for-Jobs-and-Internships
+https://www.linkedin.com/legal/crawling-terms
+https://developers.google.com/search/apis/indexing-api/v3/using-api
+https://developer.usajobs.gov/api-reference/get-api-search
+https://developer.usajobs.gov/guides/authentication
+https://www.ziprecruiter.com/partner/documentation/job-api/

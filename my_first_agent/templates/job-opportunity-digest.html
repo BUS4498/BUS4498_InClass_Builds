@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Career opportunities</title>
+</head>
+<body style="margin:0;padding:24px;background:#f5f7fa;color:#17212b;font-family:Arial,sans-serif;line-height:1.5">
+  <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #dce3eb;border-radius:10px;padding:28px">
+    <p style="margin:0 0 8px;color:#526474;font-size:13px">{{run_date}} · {{selected_timeframe}}</p>
+    <h1 style="margin:0 0 12px;font-size:25px;line-height:1.2">Your career opportunities</h1>
+    <p style="margin:0 0 22px">{{intro_text}}</p>
+
+    <h2 style="margin:24px 0 8px;font-size:19px">Best assessed matches</h2>
+    <p style="margin:0 0 12px;color:#526474">The 1–5 score describes evidence-supported fit. It does not predict an offer or confirm eligibility.</p>
+    {{scored_cards_html}}
+
+    <h2 style="margin:26px 0 8px;font-size:19px">One answer could clarify these</h2>
+    <p style="margin:0 0 12px;color:#526474">These postings need a specific fact from you before their assessment or rank can be finalized.</p>
+    {{needs_information_cards_html}}
+
+    <h2 style="margin:26px 0 8px;font-size:19px">Search coverage</h2>
+    {{coverage_html}}
+    <p style="margin:16px 0 0">{{shortfall_text}}</p>
+    <p style="margin:22px 0 0"><a href="{{application_url}}" style="color:#155e9b">Open your opportunity list and evidence</a></p>
+    <p style="margin:24px 0 0;border-top:1px solid #dce3eb;padding-top:14px;color:#526474;font-size:12px">This message summarizes a saved search. Posting details may change; check the employer or official source before acting. No application was submitted.</p>
+  </div>
+</body>
+</html>

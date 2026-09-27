@@ -1,0 +1,17 @@
+TEMPLATE CONTRACTS
+
+These files contain generic structure only. Personalized outputs, original resumes, recipient addresses, and run logs remain in owner-scoped Supabase records and private Storage, outside the source repository.
+
+opportunity-summary.html: The signed-in Site renders two result groups, each posting's checked source and time, criterion evidence, separate fit/eligibility/readiness, next step, honest shortfalls, source coverage, ledger/export status, current XLSX download link when verified, and run status. The application escapes data before inserting it. Only renderer-built fragments may fill slots ending in _html.
+
+job-opportunity-digest.html and job-opportunity-digest.txt: These are paired email bodies with the same facts. The renderer supplies checked posting links, a no-results paragraph when applicable, source coverage, and the approved Site URL. It escapes text and URL values. A template does not send email; T8 checks the student-confirmed recipient and verified hosted ledger and matching XLSX export read-back first.
+
+resume-tailoring-draft.docx: Editable full-resume draft in the reference resume's section structure, with source/version references and a student review section. It does not replace the uploaded original. The renderer repeats or omits education, work, and leadership entries according to verified student content rather than assuming one entry per section.
+
+cover-letter-draft.docx: Editable letter draft. It uses verified claims or visible student-completion prompts and records source/version references. The student's final review and approval are required before use.
+
+interview-cards.template.json: Front and reveal fields for accessible interview-practice flip cards. The application supplies posting-specific questions, evidence-grounded answer themes, and unknowns after validation.
+
+job-opportunity-log.xlsx: Blank XLSX structure for a versioned local download of all screened leads, runs, and source coverage. The owner-scoped hosted ledger is authoritative; live student rows and linked evidence remain private. An empty hosted ledger is valid for a first run, and a failed existing-ledger read is not empty state. A previously downloaded XLSX is not silently updated by later runs.
+
+Every generated preparation artifact carries DRAFT TEMPLATE - STUDENT REVIEW REQUIRED, stable run/opportunity/draft IDs, version references, and the H3 student-review route. A recommendation alone never starts generation.

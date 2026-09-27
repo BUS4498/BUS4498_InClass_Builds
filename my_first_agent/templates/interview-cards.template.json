@@ -1,0 +1,18 @@
+{
+  "label": "DRAFT TEMPLATE — STUDENT REVIEW REQUIRED",
+  "opportunity_id": "{{opportunity_id}}",
+  "posting_version": "{{posting_version}}",
+  "source_resume_version": "{{source_resume_version}}",
+  "draft_version": "{{draft_version}}",
+  "review_status": "pending_student_review",
+  "cards": [
+    {
+      "card_id": "{{card_id}}",
+      "front_question": "{{posting_specific_question}}",
+      "reveal_answer_themes": ["{{verified_theme_or_student_completion_prompt}}"],
+      "posting_evidence_refs": ["{{posting_excerpt_ref}}"],
+      "student_evidence_refs": ["{{resume_or_confirmed_student_ref}}"],
+      "unknowns": ["{{specific_unknown_or_none}}"]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Career opportunities</title>
+  <style>
+    body { margin: 0; color: #17212b; background: #f5f7fa; font: 16px/1.5 Arial, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1 { margin: 0 0 8px; font-size: 29px; line-height: 1.2; }
+    h2 { margin: 32px 0 12px; font-size: 21px; }
+    .scope, .note { color: #526474; }
+    section { background: white; border: 1px solid #dce3eb; border-radius: 10px; padding: 20px; margin-top: 14px; }
+    a { color: #155e9b; }
+    :focus-visible { outline: 3px solid #155e9b; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Career opportunities</h1>
+    <p class="scope">{{run_date}} · {{selected_timeframe}} · {{selected_role_types}} · {{run_status}}</p>
+    <section aria-labelledby="scored-heading">
+      <h2 id="scored-heading">Best assessed matches</h2>
+      <p class="note">A 1–5 score describes evidence-supported fit. It does not predict an offer or confirm eligibility.</p>
+      {{scored_opportunities_html}}
+      <p>{{scored_shortfall_text}}</p>
+    </section>
+    <section aria-labelledby="needs-heading">
+      <h2 id="needs-heading">One answer could clarify these</h2>
+      {{needs_information_opportunities_html}}
+      <p>{{needs_information_shortfall_text}}</p>
+    </section>
+    <section aria-labelledby="coverage-heading">
+      <h2 id="coverage-heading">Source and run status</h2>
+      {{source_coverage_and_counts_html}}
+      {{external_or_technical_issues_html}}
+      <p>Ledger and XLSX export read-back: {{ledger_export_status}}</p>
+      {{xlsx_download_link_html}}
+      <p>Email status, if scheduled: {{digest_status}}</p>
+    </section>
+  </main>
+</body>
+</html>

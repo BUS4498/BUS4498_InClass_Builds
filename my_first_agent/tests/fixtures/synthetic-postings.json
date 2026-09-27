@@ -1,0 +1,83 @@
+{
+  "fixture_kind": "synthetic_posting_evidence",
+  "synthetic": true,
+  "live_use_allowed": false,
+  "notice": "Every employer and URL below is fictional. The .example pages do not establish a live opening; validation outcomes are simulated for tests only.",
+  "retrieved_at": "2026-09-26T16:00:00-07:00",
+  "postings": [
+    {
+      "candidate_id": "candidate-fixture-01",
+      "source_category": "employer career site",
+      "lead_url": "https://careers.northstar-civic.example/jobs/NCD-271",
+      "posting_url": "https://careers.northstar-civic.example/jobs/NCD-271",
+      "source_authority": "simulated employer career page",
+      "simulated_validation_outcome": "admit_for_assessment",
+      "employer": "Northstar Civic Data",
+      "role": "Data Operations Intern",
+      "role_type": "internship",
+      "posting_id": "NCD-271",
+      "location": "Seattle, WA; hybrid",
+      "period": "June through August 2027",
+      "posted_date": "2026-09-15",
+      "deadline": null,
+      "compensation": null,
+      "availability": "open in synthetic fixture",
+      "evidence": [
+        {"id": "NCD-271-p1", "field": "role", "text": "The Data Operations Intern helps maintain weekly program data and prepare internal reports."},
+        {"id": "NCD-271-p2", "field": "required", "text": "Required: experience working with spreadsheets, including Microsoft Excel."},
+        {"id": "NCD-271-p3", "field": "required", "text": "Required: familiarity with SQL queries through work or coursework."},
+        {"id": "NCD-271-p4", "field": "preferred", "text": "Preferred: experience creating a Power BI dashboard."},
+        {"id": "NCD-271-p5", "field": "period", "text": "This internship runs from June through August 2027 in a hybrid Seattle arrangement."}
+      ]
+    },
+    {
+      "candidate_id": "candidate-fixture-02",
+      "source_category": "authorized applicant tracking system",
+      "lead_url": "https://jobs.harbor-insights.example/roles/HHI-117",
+      "posting_url": "https://jobs.harbor-insights.example/roles/HHI-117",
+      "source_authority": "simulated employer-authorized ATS posting",
+      "simulated_validation_outcome": "admit_for_assessment",
+      "employer": "Harbor Insights",
+      "role": "Junior Data Analyst",
+      "role_type": "entry-level",
+      "posting_id": "HHI-117",
+      "location": "Remote within the United States",
+      "period": "Expected start September 2027",
+      "posted_date": "2026-09-20",
+      "deadline": "2026-11-15",
+      "compensation": null,
+      "availability": "open in synthetic fixture",
+      "evidence": [
+        {"id": "HHI-117-p1", "field": "role", "text": "The Junior Data Analyst prepares recurring reports and responds to data questions from program staff."},
+        {"id": "HHI-117-p2", "field": "required", "text": "Required: experience analyzing data in Microsoft Excel."},
+        {"id": "HHI-117-p3", "field": "required", "text": "Required: experience building a Tableau dashboard."},
+        {"id": "HHI-117-p4", "field": "preferred", "text": "Preferred: familiarity with SQL."},
+        {"id": "HHI-117-p5", "field": "eligibility", "text": "Applicants must be authorized to work in the United States."},
+        {"id": "HHI-117-p6", "field": "period", "text": "The expected start is September 2027, and the role is remote within the United States."}
+      ],
+      "expected_student_question": "Have you built a Tableau dashboard? If yes, what did you create and when? Work authorization also remains unknown and must be checked separately."
+    },
+    {
+      "candidate_id": "candidate-fixture-03",
+      "source_category": "secondary job board",
+      "lead_url": "https://career-board.example/listings/8421",
+      "posting_url": null,
+      "source_authority": "unconfirmed secondary listing in synthetic fixture",
+      "simulated_validation_outcome": "exclude_unverified_source",
+      "employer": "Willow Systems",
+      "role": "Business Analyst Intern",
+      "role_type": "internship",
+      "posting_id": null,
+      "location": null,
+      "period": null,
+      "posted_date": null,
+      "deadline": null,
+      "compensation": null,
+      "availability": "unknown",
+      "evidence": [
+        {"id": "CB-8421-lead", "field": "snippet", "text": "Secondary listing mentions a business analyst internship but provides no readable employer posting."}
+      ],
+      "expected_next_step": "Log as unverified source evidence; do not score or ask the student to prove employer posting facts."
+    }
+  ]
+}

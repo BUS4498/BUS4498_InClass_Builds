@@ -1,0 +1,26 @@
+{
+  "fixture_kind": "synthetic_student_scope",
+  "synthetic": true,
+  "live_use_allowed": false,
+  "student_id": "student-fixture-01",
+  "resume_file": "synthetic-resume.pdf",
+  "editable_resume_fixture": "synthetic-resume.docx",
+  "resume_text_companion": "synthetic-resume.txt",
+  "resume_version": "resume-fixture-v1",
+  "resume_confirmed": true,
+  "role_interests": ["data analytics", "data operations"],
+  "timeframe": {
+    "start_date": "2027-06-01",
+    "end_date": "2027-11-30",
+    "student_confirmed": true
+  },
+  "role_types": ["internship", "entry-level"],
+  "location_preference": "Seattle area or remote",
+  "hard_constraints": [],
+  "confirmed_availability": null,
+  "work_authorization": null,
+  "tableau_experience": null,
+  "schedule_enabled": false,
+  "email_recipient": null,
+  "notes": "All names and facts are fictional. Null means unknown, not no. No email or external search is authorized by this fixture."
+}
