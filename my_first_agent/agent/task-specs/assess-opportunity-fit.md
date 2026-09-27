@@ -61,11 +61,11 @@ Tools may use only the supplied inputs for this opportunity. They may not conduc
 - **Role in this task:** Support Compare Requirements, Evaluate Constraints, Examine Evidence Gaps, Incorporate Student Clarification, and Form Evidence-Backed Assessment by locating relevant passages in the supplied inputs.
 - **Input:** Validated opportunity record; Verified student context; Opportunity history; Student clarification, when supplied.
 - **Output:** Source-labeled excerpts for the Evidence summary, plus missing, stale, or conflicting evidence for Unresolved issues. Preserve the input name and available source reference for each excerpt.
-- **Implementation Route:** File operations restricted to the local artifacts supplied as this task’s inputs.
+- **Implementation Route:** Read-only authenticated operations restricted to this student's supplied and versioned evidence records; the tool cannot access another owner's files or conduct a new search.
 - **Integration approach:** Direct integration.
 - **Task timeout:** Subject to the same 120-second total task deadline. Each call may take at most 5 seconds or the remaining task time, whichever is shorter.
 - **Maximum retries:** 1 additional attempt per invocation, subject to the task-wide call and time limits.
-- **Retry only when:** A temporary file-access or read error prevents completion. Wait 2 seconds and retry only if enough time and call budget remain. Do not retry denied access, an invalid input reference, or a confirmed missing required artifact. An optional Student clarification that has not been supplied is not a read failure. This tool is read-only, so retries do not create duplicate records or messages.
+- **Retry only when:** A temporary hosted-record or file read error prevents completion. Wait 2 seconds and retry only if enough time and call budget remain. Do not retry denied access, an invalid input reference, or a confirmed missing required artifact. An optional Student clarification that has not been supplied is not a read failure. This tool is read-only, so retries do not create duplicate records or messages.
 - **On timeout, exhausted retries, or an error that cannot be retried:** Record the affected input, attempted operation, failure category, and attempts in Subtasks performed and Unresolved issues. Set Status to “Escalated to the student.” If a supported assessment cannot be produced, set Result or recommendation to “undetermined.” Use the Handoff note to identify the exact evidence or access correction needed. Do not treat an unreadable input as evidence that the student lacks a qualification.
 
 ### Tool 2

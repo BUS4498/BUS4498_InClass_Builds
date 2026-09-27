@@ -46,7 +46,7 @@ This review can occur after the collection run ends. T7 reporting a run complete
 
 - **Output name:** Student review decision
 - **Contents and format:** Review record with opportunity ID, draft ID, reviewed version, reviewer, decision, timestamp, intended use, and any requested corrections. On approval, identify the exact student-completed artifact version approved. On request changes or decline, record the reason and next step. Silence remains awaiting review.
-- **Next task or recipient:** The student and the local review record associated with the draft; T1: Retrieve Student Context may read that decision on a later run.
+- **Next task or recipient:** The signed-in student and the owner-scoped hosted review record associated with the draft; T1: Retrieve Student Context may read that decision on a later run.
 - **Complete when:** The student's explicit decision is linked to the correct version and accurately distinguishes approved content, requested changes, declined content, and pending review.
 
 ### Output 2
@@ -63,7 +63,7 @@ This review can occur after the collection run ends. T7 reporting a run complete
 - **Tool name:** record_student_review
 - **Input:** Review-only draft; Review evidence; Student review response when provided.
 - **Output:** Student review decision; Reviewed materials or revision request.
-- **Implementation Route:** File operations and functions/scripts to display versioned artifacts and evidence and record the student's review choice and student-edited artifact reference.
+- **Implementation Route:** Authenticated Site operations display only this student's versioned private artifacts and evidence and save their review choice and student-edited artifact reference in owner-scoped Supabase records.
 - **Integration approach:** Direct integration.
 - **Role in this task:** Support human review and capture its result. The tool does not evaluate claims for the student, supply approval, edit final materials, remove review restrictions from an unapproved version, or transmit anything externally.
 - **Task timeout:** Human response deadline: two business days after assignment. This is a review target, not an automatic approval deadline. Each supporting display or save operation has a five-second limit; no automated run waits indefinitely.

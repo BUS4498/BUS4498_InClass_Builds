@@ -14,7 +14,7 @@
 
 Present a specific question when T1 cannot establish a readable uploaded resume, confirmed extraction, selected timeframe/role types, or another required search context, and let the student supply, correct, or confirm it. Show the missing or conflicting item and its source so the student can answer without guessing what the workflow needs. Do not require optional resume facts such as work authorization merely to begin discovery; keep them unknown for later assessment.
 
-The student determines their resume facts, timeframe, role types, and constraints. Software may display the request and capture a response, but it cannot choose these values, infer consent, relax a preference, or treat silence as confirmation. Pause dependent discovery and persist the request before ending the active run. Use a local pending-handoff record independent of the job spreadsheet when T1 cannot load that sheet. End as awaiting student for a human-input gap, or operationally incomplete if a required automated operation or handoff save failed; keep the question visible. A later response starts a new run through T1.
+The student determines their resume facts, timeframe, role types, and constraints. Software may display the request and capture a response, but it cannot choose these values, infer consent, relax a preference, or treat silence as confirmation. Pause dependent discovery and persist the request before ending the active run. Use a separate owner-scoped Supabase pending-handoff record when T1 cannot load the opportunity ledger but the handoff store remains available. End as awaiting student for a human-input gap, or operationally incomplete if a required automated operation or handoff save failed; keep the question visible. A later response starts a new run through T1.
 
 ## 2. Inputs
 
@@ -27,7 +27,7 @@ The student determines their resume facts, timeframe, role types, and constraint
 ### Input 2
 
 - **Input name:** Student-supplied correction
-- **Contents and format:** The student's answer, corrected local source, access correction, or explicit statement that the information is unavailable, with response time and a reference to the clarification request. This input is absent until the student responds.
+- **Contents and format:** The student's answer, corrected uploaded source, access correction, or explicit statement that the information is unavailable, with response time and a reference to the clarification request. This input is absent until the student responds.
 - **Source:** The student.
 
 - **If a required input is missing or invalid:** If the request does not identify an answerable question, keep the case blocked and return it to the workflow owner for correction. If the student response is absent, incomplete, or conflicts with existing evidence, keep status awaiting student and identify the unresolved item. Do not substitute an assumed answer.
@@ -45,7 +45,7 @@ The student determines their resume facts, timeframe, role types, and constraint
 
 - **Output name:** Context handoff status
 - **Contents and format:** Clarification ID, original run ID, status awaiting student, response received, or still unresolved; question, responsible student, assignment time, response deadline, and next step. An unanswered deadline is marked overdue and awaiting student.
-- **Next task or recipient:** The student and the local pending-handoff record used by T1.
+- **Next task or recipient:** The signed-in student and the separate owner-scoped pending-handoff record used by T1.
 - **Complete when:** The pending state or received response is saved and visible, with its identifiers and question checked against storage, and no dependent search or assessment continues while required context is missing.
 
 ## 4. Planned Tools
@@ -55,7 +55,7 @@ The student determines their resume facts, timeframe, role types, and constraint
 - **Tool name:** request_student_clarification
 - **Input:** Context clarification request; Student-supplied correction when provided.
 - **Output:** Student context response; Context handoff status.
-- **Implementation Route:** File operations and functions/scripts to display the handoff in the student interface and store the student's explicit response.
+- **Implementation Route:** Authenticated Site operations display the handoff and save the student's explicit response in a separate owner-scoped Supabase record, with read-back before reporting it durable.
 - **Integration approach:** Direct integration.
 - **Role in this task:** Show the evidence and question, capture the student's answer, and retain a pending status. The tool supplies no answer and makes no substantive judgment about the student's facts or preferences.
 - **Task timeout:** Human response deadline: one business day after assignment. The active automated run ends immediately on handoff; each supporting display or save operation has a five-second limit.

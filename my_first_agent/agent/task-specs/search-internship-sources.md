@@ -31,10 +31,10 @@ Pass available evidence to T3: Validate Opportunities. T3 determines which oppor
 ### Input 2
 
 - **Input name:** Opportunity history
-- **Contents and format:** T1's spreadsheet snapshot with existing opportunity IDs, lead and authoritative source links, last-seen times, and versions. Previously tracked postings may be returned for T3 to check for changes.
+- **Contents and format:** T1's owner-scoped hosted ledger snapshot with existing opportunity IDs, lead and authoritative source links, last-seen times, and versions. Previously tracked postings may be returned for T3 to check for changes.
 - **Source:** T1: Retrieve Student Context.
 
-- **If a required input is missing or invalid:** Record the missing resume/scope criterion or invalid trigger and route it to H1. Do not run searches for a targeted update or infer timeframe, role type, or a hard constraint. An explicitly empty first-run spreadsheet is valid.
+- **If a required input is missing or invalid:** Record the missing resume/scope criterion or invalid trigger and route it to H1. Do not run searches for a targeted update or infer timeframe, role type, or a hard constraint. An explicitly empty first-run hosted ledger is valid.
 
 ## 3. Outputs
 
@@ -61,7 +61,7 @@ Pass available evidence to T3: Validate Opportunities. T3 determines which oppor
 - **Output:** Candidate opportunity evidence; Search run log.
 - **Implementation Route:** Functions/scripts to fill and execute the fixed query sequence, with web API calls for public search and public posting retrieval.
 - **Integration approach:** Direct integration.
-- **Role in this task:** Return source evidence under a predetermined accessible-source sequence. The tool does not use a model to choose searches, score fit, update the spreadsheet, or submit applications. Failed query/API attempts count toward the eight-attempt cap and failed posting reads count toward the 24-read cap; skipped leads do not extend any limit.
+- **Role in this task:** Return source evidence under a predetermined accessible-source sequence. The tool does not use a model to choose searches, score fit, update the hosted ledger or `.xlsx` snapshot, or submit applications. Failed query/API attempts count toward the eight-attempt cap and failed posting reads count toward the 24-read cap; skipped leads do not extend any limit.
 - **Task timeout:** 480 seconds total for the entire task. Each external call has a 15-second maximum or the remaining task time, whichever is shorter.
 - **Maximum retries:** 0.
 - **Retry only when:** Not applicable.

@@ -12,9 +12,9 @@
 
 ## 1. Task Description
 
-Accept and preserve the student's original resume, extract readable text and literal source-cited education, experience, and skill passages for the student to confirm or correct, and load selected role interests, timeframe, role types (internships, entry-level jobs, or both), preferences, constraints, local job spreadsheet, and any new response. Use a fixed retrieval and completeness check. Record resume version and confirmation status. Do not infer qualifications from absent resume text or silently replace confirmed context with a conflicting response. A scan with unreadable text requires a readable replacement or approved text extraction route; it is not an empty resume.
+Accept and preserve the signed-in student's original resume in private Supabase Storage, extract readable text and literal source-cited education, experience, and skill passages for the student to confirm or correct, and load selected role interests, timeframe, role types (internships, entry-level jobs, or both), preferences, constraints, owner-scoped hosted job ledger, and any new response. Use a fixed retrieval and completeness check. Record resume version and confirmation status. The Site derives the owner from verified sign-in on the server; a client-supplied owner ID cannot grant access. Do not infer qualifications from absent resume text or silently replace confirmed context with a conflicting response. A scan with unreadable text requires a readable replacement or approved text extraction route; it is not an empty resume.
 
-Identify the trigger as manual discovery, approved daily/weekly scheduled discovery, or targeted update. Discovery proceeds to T2: Search Career Sources only when the resume, student-confirmed search scope, and required local state are available. A schedule uses the last approved scope version and a confirmed recipient; a scope change pauses the scheduled run for confirmation. A targeted update proceeds to T3: Validate Opportunities for exactly one identified tracked opportunity or saved pending candidate, and only then to T4 when validation succeeds, with zero market searches. An empty spreadsheet is valid for a first discovery run; a missing or unreadable existing spreadsheet is not empty state. Unknown eligibility, authorization, availability, or geographic preference remains unknown unless explicitly confirmed.
+Identify the trigger as manual discovery, approved daily/weekly scheduled discovery, or targeted update. Discovery proceeds to T2: Search Career Sources only when the resume, student-confirmed search scope, and required hosted state are available. A schedule uses the last approved scope version and a confirmed recipient; a scope change pauses the scheduled run for confirmation. A targeted update proceeds to T3: Validate Opportunities for exactly one identified tracked opportunity or saved pending candidate, and only then to T4 when validation succeeds, with zero market searches. An empty hosted ledger is valid for a first discovery run; a missing or unreadable existing ledger is not empty state. Unknown eligibility, authorization, availability, or geographic preference remains unknown unless explicitly confirmed.
 
 ## 2. Inputs
 
@@ -27,16 +27,16 @@ Identify the trigger as manual discovery, approved daily/weekly scheduled discov
 ### Input 2
 
 - **Input name:** Student context records
-- **Contents and format:** Original uploaded resume (PDF, DOCX, or plain text when readable), its extracted passages and version, plus student-confirmed corrections and structured records for role interests, timeframe, work authorization, availability, location constraints, and preferences, each with source references and verification status. Distinguish resume evidence from later student-supplied facts and optional unknowns. Store the private original locally; do not publish it to the repository or send it in a digest.
+- **Contents and format:** Original uploaded resume (PDF, DOCX, or plain text when readable), its extracted passages and version, plus student-confirmed corrections and structured records for role interests, timeframe, work authorization, availability, location constraints, and preferences, each with source references and verification status. Distinguish resume evidence from later student-supplied facts and optional unknowns. Store the original in an owner-scoped private Supabase bucket; do not publish it to the repository, expose another student's copy, or send it in a digest.
 - **Source:** Student upload and student-confirmed profile and preference records.
 
 ### Input 3
 
 - **Input name:** Tracked opportunity collection
-- **Contents and format:** Local job opportunity spreadsheet and linked evidence records containing every screened opportunity's stable ID, source links, disposition, prior assessments and recommendations, student decisions, unresolved questions, first/last seen times, and versions. A valid first-run spreadsheet may contain no rows. Load linked pending-handoff and pending-candidate records when referenced; an unvalidated candidate stays separate from scored records.
-- **Source:** The existing local spreadsheet and records previously checked by T7: Record and Present Results.
+- **Contents and format:** Owner-scoped Supabase job opportunity ledger and linked evidence records containing every screened opportunity's stable ID, source links, disposition, prior assessments and recommendations, student decisions, unresolved questions, first/last seen times, and versions. A valid first-run ledger may contain no rows. Load linked pending-handoff and pending-candidate records when referenced; an unvalidated candidate stays separate from scored records. The latest `.xlsx` download is a snapshot, not the authoritative input for a later run.
+- **Source:** The existing hosted ledger and records previously checked by T7: Record and Present Results.
 
-- **If a required input is missing or invalid:** Return the specific missing, unreadable, stale, or conflicting resume, scope, or state item to H1: Request Student Clarification. A targeted update without an identifiable tracked opportunity or saved pending candidate and usable evidence is blocked. End as awaiting student for missing student input, or incomplete because of an operational error for failed reads/checks/saves; do not search, guess, or change spreadsheet rows. Optional student facts may remain unknown and should not block all discovery.
+- **If a required input is missing or invalid:** Return the specific missing, unreadable, stale, or conflicting resume, scope, or state item to H1: Request Student Clarification. A targeted update without an identifiable tracked opportunity or saved pending candidate and usable evidence is blocked. End as awaiting student for missing student input, or incomplete because of an operational error for failed reads/checks/saves; do not search, guess, or change ledger rows. Optional student facts may remain unknown and should not block all discovery.
 
 ## 3. Outputs
 
@@ -50,9 +50,9 @@ Identify the trigger as manual discovery, approved daily/weekly scheduled discov
 ### Output 2
 
 - **Output name:** Opportunity history
-- **Contents and format:** Snapshot of spreadsheet rows, linked evidence, and record versions for duplicate checks and permitted updates. For a targeted update, identify the single tracked opportunity or saved pending candidate and package employer, role, links, posting evidence, requirements, location, dates, deadline, compensation when stated, prior validation status, and newly supplied evidence for T3. Include a Search run log marked not applicable with zero discovery searches and new candidates. T1 does not label the target revalidated; only T3 does. Include Student clarification separately; a new response does not silently become a resume claim.
+- **Contents and format:** Owner-scoped snapshot of hosted ledger rows, linked evidence, and record versions for duplicate checks and permitted updates. For a targeted update, identify the single tracked opportunity or saved pending candidate and package employer, role, links, posting evidence, requirements, location, dates, deadline, compensation when stated, prior validation status, and newly supplied evidence for T3. Include a Search run log marked not applicable with zero discovery searches and new candidates. T1 does not label the target revalidated; only T3 does. Include Student clarification separately; a new response does not silently become a resume claim.
 - **Next task or recipient:** T3: Validate Opportunities, T4: Assess Opportunity Fit after validation, and T7: Record and Present Results. For a targeted update, pass the packaged Candidate opportunity evidence and not-applicable Search run log to T3.
-- **Complete when:** Records can be traced to their stored versions and the target's evidence is usable, or a valid empty first-run spreadsheet is explicitly identified for discovery.
+- **Complete when:** Records can be traced to their stored versions and the target's evidence is usable, or a valid empty first-run ledger is explicitly identified for discovery.
 
 ### Output 3
 
@@ -68,9 +68,9 @@ Identify the trigger as manual discovery, approved daily/weekly scheduled discov
 - **Tool name:** retrieve_student_context
 - **Input:** Run request; Student context records; Tracked opportunity collection.
 - **Output:** Verified student context; Opportunity history; Context clarification request when blocked.
-- **Implementation Route:** File operations to read the supplied local artifacts, followed by functions/scripts for fixed presence, format, identity, and version checks.
+- **Implementation Route:** Authenticated Site operations read only this student's Supabase records and private resume objects, followed by functions/scripts for fixed presence, format, owner, and version checks.
 - **Integration approach:** Direct integration.
-- **Role in this task:** Extract readable resume text without invented claims, retrieve and package confirmed evidence, read the local spreadsheet, and apply fixed routing checks. It does not choose student preferences, search externally, email anyone, or write resume/spreadsheet changes.
+- **Role in this task:** Extract readable resume text without invented claims, retrieve and package confirmed evidence, read the hosted ledger, and apply fixed routing checks. It does not choose student preferences, search externally, email anyone, or write resume/ledger changes.
 - **Task timeout:** 30 seconds total, including all reads and checks.
 - **Maximum retries:** 0.
 - **Retry only when:** Not applicable.
@@ -80,8 +80,8 @@ Identify the trigger as manual discovery, approved daily/weekly scheduled discov
 
 - **Tool name:** save_student_setup
 - **Input:** Student-uploaded original resume; student-confirmed extracted passages/corrections; selected role interests, timeframe, and role types; preferences and constraints; explicit schedule enable/disable, cadence, local time, timezone, weekly day when relevant, confirmed recipient, and sender integration reference when configured.
-- **Output:** Versioned local private resume reference, confirmed search-scope record, and optional schedule/recipient configuration reference with read-back status. Return an exact validation question instead of saving an incomplete schedule.
-- **Implementation Route:** Local file operations and deterministic validation from a student-facing upload/setup control. Preserve each original resume version; keep private resume and recipient configuration outside published repository paths. Confirm writes by read-back and reject conflicting versions.
+- **Output:** Versioned owner-scoped private resume reference, confirmed search-scope record, and optional schedule/recipient configuration reference with read-back status. Return an exact validation question instead of saving an incomplete schedule.
+- **Implementation Route:** Authenticated Site upload/setup operations and deterministic validation save the original to a private Supabase bucket and the confirmed scope to owner-scoped records. Preserve each original resume version; keep private resume and recipient configuration outside published repository paths. Confirm writes by read-back and reject conflicting versions or another owner's path.
 - **Integration approach:** Direct integration. A student action invokes this setup tool before a discovery run or when changing scope/schedule; T1's retrieval tool then reads the saved references.
 - **Role in this task:** Persist only student-supplied or student-confirmed setup values. It cannot infer a missing role interest, timeframe, role type, recipient, or email consent; it cannot start a search or send a digest. Changing the approved scope or recipient pauses future scheduled runs until the student confirms the updated configuration.
 - **Task timeout:** 30 seconds for one upload/configuration save and read-back; resume text extraction is bounded by the same operation and unreadable scans return an explicit correction need.

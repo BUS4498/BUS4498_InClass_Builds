@@ -16,7 +16,7 @@ Present the narrow student-answerable question that prevents a meaningful resume
 
 Do not turn unknown evidence into a qualification gap, assume eligibility, or relax constraints for the student. If the student cannot resolve the issue, keep it unresolved with a named next step. Stop only the affected candidate's assessment and preparation while awaiting a response; the bounded discovery may continue with other candidates. Do not repeatedly ask the model or launch a new search.
 
-A response for an already tracked opportunity starts a targeted update through T1, T3, and T4 after successful revalidation, with zero discovery searches. During the current discovery, hold this candidate with its evidence/version and question while other candidates continue; T7 persists all dispositions and the local spreadsheet before run completion. A held unvalidated candidate stays in separate pending state and must pass T3 after a response. A clarification response alone is not validation, permission to fabricate a spreadsheet entry, or approval of final materials.
+A response for an already tracked opportunity starts a targeted update through T1, T3, and T4 after successful revalidation, with zero discovery searches. During the current discovery, hold this candidate with its evidence/version and question while other candidates continue; T7 persists all dispositions in the owner's hosted ledger and downloadable `.xlsx` snapshot before run completion. A held unvalidated candidate stays in separate pending state and must pass T3 after a response. A clarification response alone is not validation, permission to fabricate a ledger entry, or approval of final materials.
 
 ## 2. Inputs
 
@@ -57,7 +57,7 @@ A response for an already tracked opportunity starts a targeted update through T
 - **Tool name:** request_targeted_clarification
 - **Input:** Targeted clarification request; Student opportunity response when provided.
 - **Output:** Student clarification; Targeted handoff status.
-- **Implementation Route:** File operations and functions/scripts to present the supplied evidence and question and record the student's explicit response.
+- **Implementation Route:** Authenticated Site operations present the owner-scoped evidence and question and save the student's explicit response with its opportunity and version in Supabase.
 - **Integration approach:** Direct integration.
 - **Role in this task:** Support the human handoff for one opportunity. The tool cannot answer the question, research other opportunities, decide eligibility, update final materials, or expand the student's request.
 - **Task timeout:** Human response deadline: one business day after assignment. End this candidate's assessment immediately; other candidates may continue, then T7 persists all available results before the run ends. Never wait for a human response inside automation. Each supporting display/save operation has a five-second limit; T7 retains its own deadline. Show any earlier posting deadline as context without treating urgency as permission to proceed.
