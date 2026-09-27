@@ -12,9 +12,9 @@
 
 ## 1. Task Description
 
-Present a specific question when T1 cannot establish the required context, and let the student supply, correct, or confirm the information. Show the missing or conflicting item and its source so the student can answer without guessing what the workflow needs.
+Present a specific question when T1 cannot establish a readable uploaded resume, confirmed extraction, selected timeframe/role types, or another required search context, and let the student supply, correct, or confirm it. Show the missing or conflicting item and its source so the student can answer without guessing what the workflow needs. Do not require optional resume facts such as work authorization merely to begin discovery; keep them unknown for later assessment.
 
-The student determines the correct facts and constraints. Software may display the request and capture the response, but it cannot choose an answer, infer consent, relax a preference, or treat silence as confirmation. Pause dependent work and end the active run as awaiting student. A later response starts a new run through T1; it does not resume an unlimited waiting loop.
+The student determines their resume facts, timeframe, role types, and constraints. Software may display the request and capture a response, but it cannot choose these values, infer consent, relax a preference, or treat silence as confirmation. Pause dependent discovery and persist the request before ending the active run. Use a local pending-handoff record independent of the job spreadsheet when T1 cannot load that sheet. End as awaiting student for a human-input gap, or operationally incomplete if a required automated operation or handoff save failed; keep the question visible. A later response starts a new run through T1.
 
 ## 2. Inputs
 
@@ -22,7 +22,7 @@ The student determines the correct facts and constraints. Software may display t
 
 - **Input name:** Context clarification request
 - **Contents and format:** Run ID, affected input, missing or conflicting context, exact question or access correction, relevant source references, and any existing values that need confirmation.
-- **Source:** T1: Retrieve Student Context. T2: Search Internship Sources or T3: Validate Opportunities may also identify an invalid required context item and use the same handoff.
+- **Source:** T1: Retrieve Student Context. T2: Search Career Sources or T3: Validate Opportunities may also identify an invalid required context item and use the same handoff.
 
 ### Input 2
 
@@ -46,7 +46,7 @@ The student determines the correct facts and constraints. Software may display t
 - **Output name:** Context handoff status
 - **Contents and format:** Clarification ID, original run ID, status awaiting student, response received, or still unresolved; question, responsible student, assignment time, response deadline, and next step. An unanswered deadline is marked overdue and awaiting student.
 - **Next task or recipient:** The student and the local pending-handoff record used by T1.
-- **Complete when:** The pending state or received response is visible and no dependent search or assessment continues while required context is missing.
+- **Complete when:** The pending state or received response is saved and visible, with its identifiers and question checked against storage, and no dependent search or assessment continues while required context is missing.
 
 ## 4. Planned Tools
 
@@ -61,4 +61,4 @@ The student determines the correct facts and constraints. Software may display t
 - **Task timeout:** Human response deadline: one business day after assignment. The active automated run ends immediately on handoff; each supporting display or save operation has a five-second limit.
 - **Maximum retries:** Not applicable — manual task.
 - **Retry only when:** Not applicable.
-- **On timeout, exhausted retries, or an error that cannot be retried:** Keep the case awaiting student and mark the deadline overdue. A display or save failure is shown to the student with the clarification ID; a failed save is not recorded as a received answer. Do not send automatic reminders, infer approval, or restart the workflow without a valid student response.
+- **On timeout, exhausted retries, or an error that cannot be retried:** When the human response deadline passes, keep the case awaiting student and mark the deadline overdue. A supporting display or save failure makes the run operationally incomplete and is shown to the student with the clarification ID; a failed save is not recorded as a received answer or durable handoff. Do not send automatic reminders, infer approval, or restart the workflow without a valid student response.

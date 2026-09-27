@@ -6,7 +6,7 @@
 # BASIC INFORMATION
 task_id: "T4"
 task_name: "Assess Opportunity Fit"
-task_owner: "Internship Application Prep Agent; the student retains final decision authority"
+task_owner: "Career Opportunity Prep Agent; the student retains final decision authority"
 
 # Agent Inference Configuration
 Provider: OpenAI
@@ -18,26 +18,26 @@ On inference failure or exhausted limits: Record the unresolved status and hand 
 
 ## 1. Task Goal
 
-- **Objective:** Produce an evidence-backed assessment of one validated internship opportunity that distinguishes strong matches, partial matches, genuine gaps, and unknowns and gives the next task a reliable basis for recommending an action without inventing student qualifications.
+- **Objective:** Produce an understandable, evidence-backed 1–5 fit score or provisional range for one validated opportunity against the uploaded resume and confirmed student facts, with a criterion-by-criterion explanation of matches, partial matches, genuine gaps, and unknowns. Keep eligibility and preparation readiness separate. A source-verified posting with missing details can receive a bounded partial assessment; those unknowns cannot establish eligibility or readiness. If evidence is too sparse for a number, explain why rather than inventing a score, and identify a student-answerable question when one could materially change the assessment or rank.
 
 ## 2. Inbound Inputs
 
 ### Input 1
 
 - **Input name:** Validated opportunity record
-- **What it contains:** The employer, role, source link, posting evidence, requirements, location, dates, deadline, compensation when stated, and validation status for one new or materially changed opportunity.
+- **What it contains:** Employer/agency, role, authoritative posting and lead links, source-labeled evidence, requirements, location, dates, deadline, compensation when stated, and validation status for one new or changed discovery opportunity, or one revalidated target. Include run ID, opportunity ID, selected timeframe/role types, and record/evidence versions.
 - **Source:** T3: Validate Opportunities
 
 ### Input 2
 
 - **Input name:** Verified student context
-- **What it contains:** The student's documented education, experience, skills, work authorization, availability, location constraints, and career preferences.
+- **What it contains:** Source-cited passages and version of the uploaded resume, student-confirmed corrections, selected timeframe and role types, preferences, work authorization, availability, and location constraints. Each fact carries its provenance and verification status; absence from the resume is not evidence of absence.
 - **Source:** T1: Retrieve Student Context
 
 ### Input 3
 
 - **Input name:** Opportunity history
-- **What it contains:** Prior assessments, student decisions, unresolved questions, and material changes associated with the same tracked opportunity.
+- **What it contains:** Prior assessments, student decisions, unresolved questions, and material changes associated with the same opportunity. A valid empty history is expected for a new opportunity and is distinct from an unreadable or missing required input.
 - **Source:** T1: Retrieve Student Context
 
 ### Input 4
@@ -50,10 +50,10 @@ On inference failure or exhausted limits: Record the unresolved status and hand 
 
 ### Task-Wide Limits
 
-- **Total task timeout:** 120 seconds for one task run, including tool calls, retries, reasoning, and waiting. A tool call or retry does not restart this clock. If student clarification is needed, record the handoff and end the run rather than waiting indefinitely.
+- **Total task timeout:** 120 seconds for one opportunity's task run, including tool calls, retries, and reasoning. A tool call or retry does not restart this clock. If student clarification is needed, record the candidate-level handoff and end this task; the controller may continue other candidates within the discovery run.
 - **Maximum tool calls:** 6 calls across all tools during one task run; retries count toward this total. The subtask repetition and clarification limits in Section 4 also apply.
 
-Tools may use only the supplied inputs for this opportunity. They may not conduct a new internship search, follow external links to gather additional evidence, modify student or opportunity records, contact employers, or submit applications. The agent prepares the Section 6 deliverable for the surrounding workflow to route.
+Tools may use only the supplied inputs for this opportunity. They may not conduct a new job search, follow external links to gather evidence, modify resume or opportunity records, email anyone, contact employers, or submit applications. The agent classifies evidence and prepares the Section 6 deliverable. The controller calculates the fit score and unrounded weighted fraction from the source-cited criterion ledger using Section 4's fixed rule; the model does not choose weights or supply an unchecked number.
 
 ### Tool 1
 
@@ -89,8 +89,8 @@ This second tool must return “unknown” when a comparison requires unstated a
 ### Permitted Subtask 1
 
 - **Subtask name:** Compare Requirements
-- **Subtask description:** Classify relevant posting statements as required, preferred, or unclear; compare each with verified student evidence; and produce documented matches, partial matches, gaps, and unknowns.
-- **Subtask boundary:** Use only the supplied posting and verified student context. Do not infer an unstated qualification, convert coursework into employment experience, or decide the next action.
+- **Subtask description:** List distinct posting qualifications as required, preferred, or unclear, counting duplicate restatements once; compare each with cited resume passages or confirmed student evidence; and classify it as matched, partly matched, documented gap, or unknown. Add one role-interest criterion only when confirmed preferences and posting duties support comparison. Give exact posting and student-evidence references when they exist; for an unknown, identify the absent evidence rather than inventing a reference.
+- **Subtask boundary:** Use only the supplied posting, resume, and confirmed student context. Absence of a skill or experience from the resume is unknown, not a gap, unless the student explicitly confirmed absence or verified evidence establishes non-fulfillment. Do not infer an unstated qualification, convert coursework into employment experience, or decide the next action.
 - **Retry limits:** Perform once with the current evidence. Repeat once only after receiving new material evidence.
 
 ### Permitted Subtask 2
@@ -110,33 +110,35 @@ This second tool must return “unknown” when a comparison requires unstated a
 ### Permitted Subtask 4
 
 - **Subtask name:** Incorporate Student Clarification
-- **Subtask description:** Compare a new student response with the unresolved issue, identify what the response resolves, and determine whether the assessment can now be narrowed or completed.
+- **Subtask description:** Compare a new student response or confirmed resume correction with the unresolved issue, identify what it resolves, and determine whether the assessment can now be narrowed or completed.
 - **Subtask boundary:** Treat the response as student-supplied evidence only for this opportunity. Do not turn it into a resume claim, final application content, or employer communication without the student's later review and approval.
-- **Retry limits:** Allow no more than two clarification cycles for the same unresolved issue during one task run.
+- **Retry limits:** Incorporate the clarification supplied at task entry once. If more human input is needed, record the exact candidate question and end this task; other candidates may continue. A later explicit response starts a new bounded targeted run through T1, T3, and T4. Preserve clarification history; never relaunch an unanswered issue automatically.
 
 ### Permitted Subtask 5
 
 - **Subtask name:** Form Evidence-Backed Assessment
-- **Subtask description:** Synthesize the available matches, gaps, constraints, unknowns, deadline, and urgency into an explainable fit and readiness assessment.
-- **Subtask boundary:** Do not use an unexplained numerical score, choose the next operational action, prepare application materials, or imply that an application will be submitted.
+- **Subtask description:** Synthesize the criterion ledger, constraints, unknowns, deadline, and urgency into an explainable fit and readiness assessment. The controller calculates the score or provisional range and unrounded ordering fraction using the fixed rule below. Flag material user-answerable unknowns and their effect on the score bounds; T7 decides final group and rank after comparing all candidates. Keep external posting unknowns separate.
+- **Subtask boundary:** Do not invent a score, criterion, weight, source reference, or probability of receiving an offer; choose the next operational action; prepare application materials; or imply that an application will be submitted.
 - **Retry limits:** Revise once only when another permitted subtask produces new material evidence or exposes an internal conflict.
+
+For the fit score, required qualifications have weight 2; preferred qualifications and a supported role-interest alignment criterion have weight 1. An unclear posting qualification is a weight-2 unknown until clarified. For a known comparison, matched earns full weight, partly matched earns half, and a documented gap earns zero. An unknown earns zero in the lower bound and full weight in the upper bound; it is not a gap. Divide each bound by total included weight without rounding. Map each fraction to a 1–5 rating: 1 = 0% to under 20%, 2 = 20% to under 40%, 3 = 40% to under 60%, 4 = 60% to under 80%, and 5 = 80% to 100%. Show one rating if both bounds map to the same value, otherwise a provisional range. A number requires at least one posting qualification with a verifiable student comparison; role-interest alignment alone does not satisfy that minimum. Otherwise show `Insufficient evidence to rate` with the exact need. Preserve the unrounded fraction or bounds for T7's group and ranking decision. Flag user-answerable unknowns that could materially affect the score; T7 routes a rank-sensitive case to the needs-information group after all assessments are available. This score describes evidence-supported fit, not eligibility, readiness, or offer probability; hard conflicts and unknown eligibility are separate and cannot be overridden by a high score.
 
 - **Decision guidance:** After each subtask, use its findings to select the permitted subtask most likely to resolve the most important remaining uncertainty. Do not follow a fixed sequence. If no permitted subtask can make useful progress, stop and hand the case to a person.
 
 ## 5. When to Stop or Hand Off to a Human
 
-- **Stop successfully when:** Every material posting requirement and student constraint has been classified as supported, partially supported, unsupported, or unknown; the assessment cites the relevant evidence; and any remaining unknown is clearly stated and does not prevent a bounded assessment.
-- **Hand off early when:** A material requirement or constraint is missing, stale, or conflicting; an eligibility question cannot be answered from explicit evidence; a proposed student claim lacks support; the clarification or gap limits have been reached; or the next judgment would require the agent to exercise authority reserved for the student.
+- **Stop successfully when:** Every material posting requirement and student constraint has been classified as supported, partially supported, unsupported, or unknown; the criterion ledger and score or `Insufficient evidence to rate` cite the relevant evidence; and each unknown's effect on the score range, eligibility, or readiness is stated. A supported partial assessment may complete with an unresolved external posting fact, but must label eligibility or readiness undetermined when that fact is necessary to decide it.
+- **Hand off early when:** Missing, stale, or conflicting personal evidence prevents a meaningful assessment or stable rank; a proposed student claim lacks support; the clarification or gap limits are reached; or judgment requires student authority. Record a specific student-answerable question for H2 and end this candidate's task while other candidates continue. Do not ask the student to certify a missing employer fact; route that to a source/technical status. A hard conflict is a supported finding, not a tool failure.
 - **Hand off to:** The student who owns the internship search and application decisions.
 
 Stop at the first applicable budget limit or handoff condition. While awaiting review, take no further autonomous action.
 
 ## 6. Outbound Deliverable
 
-- **Status:** Completed or escalated to the student.
-- **Result or recommendation:** An evidence-backed fit and readiness assessment, not an operational action recommendation. If the task was escalated before reaching a supported result, write `undetermined`.
-- **Evidence summary:** The strongest matches, partial matches, genuine gaps, constraints, unknowns, deadline, and urgency, each tied to the supplied posting or verified student evidence.
+- **Status:** Completed or escalated to the student. Accompany this deliverable with the controller-supplied run ID, opportunity ID, and record/evidence version references. On escalation, distinguish missing human evidence or judgment from an operational error, including inference failure, deadline exhaustion, or tool failure, so T7 can assign the run outcome without treating a failed operation as a successful assessment.
+- **Result or recommendation:** An evidence-backed fit assessment with controller-checked 1–5 score, provisional range, or `Insufficient evidence to rate`, unrounded weighted fraction/bounds for T7's deterministic group/rank decision, and a short plain-language meaning; not an operational action recommendation. Mark complete or partial and flag material student-answerable unknowns. Keep fit, eligibility, and readiness distinct. If escalation prevented a supported result, write `undetermined` rather than a number.
+- **Evidence summary:** A criterion table showing each distinct required, preferred, unclear, and supported role-interest item; its weight and matched/partly matched/gap/unknown classification; the exact posting reference and student-evidence reference when available or the specific missing evidence; and the contribution or uncertainty behind the score. Show hard constraints, unknown eligibility, deadline, urgency, and evidence that could change the result separately. Do not present a score without this explanation.
 - **Subtasks performed:** The permitted subtasks completed, including any repeated assessment or clarification attempt.
 - **Unresolved issues:** Remaining missing or conflicting evidence. Write `none` only when the task has been completed successfully with no unresolved issue.
 - **Handoff note:** The reason for stopping, the exact unresolved question, and what the student needs to decide or provide; write `Not applicable` for a completed task.
-- **Next task or recipient:** Send a completed assessment to T5: Recommend Next Actions. Send an unresolved case to the student.
+- **Next task or recipient:** Send a completed assessment to T5: Recommend Next Actions. Send a user-answerable unresolved case to H2: Request Targeted Clarification for candidate-level pending state; the controller continues other candidates and T7 later persists all results and questions. A technical failure stops affected automation and keeps the run operationally incomplete even when a student question also exists.

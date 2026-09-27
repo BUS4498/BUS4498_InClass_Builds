@@ -12,9 +12,9 @@
 
 ## 1. Task Description
 
-The student reviews the T6 checklist, outline, or question worksheet against the supplied posting and their verified evidence. They confirm factual accuracy, assess relevance and tone, complete or remove visible placeholders, resolve conflicting claims, and decide whether to approve a specific student-completed version for its stated purpose.
+The student reviews the T6 tailored resume draft, cover-letter draft, or interview flip cards against the original resume, checked posting, and confirmed evidence. They confirm factual accuracy, assess relevance and tone, complete or remove placeholders, resolve conflicting claims, and decide whether to approve a specific student-completed version for its stated purpose. A flip-card answer theme is practice guidance, not a factual student story until the student supplies one.
 
-The student may approve, request changes, or decline. The preparation draft remains under review until that explicit decision exists. Approval applies only to the reviewed version; later edits require a new review. An approved checklist or outline is not approval of a later application document derived from it. The student controls final edits and any final application materials.
+The student may approve, request changes, or decline. The preparation draft remains under review until that explicit decision exists. Approval applies only to the reviewed version; later edits require a new review. Approval of one tailored resume, cover letter, or card set does not approve another version or a later application assembled from it. The student controls final edits and application materials; the uploaded original resume remains preserved.
 
 This review can occur after the collection run ends. T7 reporting a run complete does not approve a draft. Neither a review decision nor completion of this task sends material, contacts an employer, or authorizes the system to submit an application.
 
@@ -23,14 +23,14 @@ This review can occur after the collection run ends. T7 reporting a run complete
 ### Input 1
 
 - **Input name:** Review-only draft
-- **Contents and format:** T6's labeled checklist, outline, or question worksheet with opportunity ID, draft ID and version, request reference, evidence references, visible placeholders, unknowns, and review checklist.
+- **Contents and format:** T6's labeled tailored resume draft, cover-letter draft, or interview flip-card set with opportunity ID, draft ID and version, request reference, original resume/posting references, evidence references, placeholders, unknowns, and review checklist.
 - **Source:** T6: Prepare Review-Only Materials, with a stored artifact link presented by T7: Record and Present Results.
 
 ### Input 2
 
 - **Input name:** Review evidence
-- **Contents and format:** The posting evidence, verified student facts, completed fit assessment, recommendation, and student preparation request that support the draft. Preserve the source and version of each item.
-- **Source:** T1: Retrieve Student Context; T3: Validate Opportunities or the tracked record loaded by T1; T4: Assess Opportunity Fit; and T5: Recommend Next Actions.
+- **Contents and format:** The original uploaded resume and confirmed facts, authoritative posting evidence, completed fit assessment, recommendation, and student preparation request that support the draft. Preserve source and version of each item.
+- **Source:** T1: Retrieve Student Context; T3: Validate Opportunities for discovery or targeted revalidation; T4: Assess Opportunity Fit; and T5: Recommend Next Actions.
 
 ### Input 3
 
@@ -53,7 +53,7 @@ This review can occur after the collection run ends. T7 reporting a run complete
 
 - **Output name:** Reviewed materials or revision request
 - **Contents and format:** Either the specific student-approved artifact version with its review record, or the draft marked changes requested or declined with the student's comments. Preserve the original review-only draft and its source references.
-- **Next task or recipient:** The student for their own subsequent use. Further agent preparation requires a new explicit request through T1, T4, T5, and T6 for the tracked opportunity.
+- **Next task or recipient:** The student for their own subsequent use. Further agent preparation requires a new explicit request through T1, T3, T4, T5, and T6 for the tracked opportunity.
 - **Complete when:** Only the exact approved version is identified as approved; unapproved versions remain visibly restricted, and no employer communication or application submission has occurred.
 
 ## 4. Planned Tools

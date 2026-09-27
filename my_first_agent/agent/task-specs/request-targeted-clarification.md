@@ -12,19 +12,19 @@
 
 ## 1. Task Description
 
-Present the narrow evidence question or decision that prevents T4 from supporting an assessment for one opportunity. Show the relevant posting statement, available student evidence, conflict or unknown, and why the answer is needed. The student supplies a factual clarification, supporting evidence, or an explicit decision about a preference.
+Present the narrow student-answerable question that prevents a meaningful resume-to-posting assessment or could materially change one opportunity's rank. Show the posting criterion, available resume/confirmed evidence, conflict or unknown, and why the answer matters. The student supplies a factual clarification, corrected resume evidence, or an explicit preference decision. An external employer fact or inaccessible page is a source/technical issue, not a student fitness question.
 
-Do not turn unknown evidence into a qualification gap, assume eligibility, or relax constraints on the student's behalf. If the student cannot resolve the issue, keep it unresolved with a named next step. Stop affected autonomous work while awaiting the response; do not repeatedly ask the model or search the internship market.
+Do not turn unknown evidence into a qualification gap, assume eligibility, or relax constraints for the student. If the student cannot resolve the issue, keep it unresolved with a named next step. Stop only the affected candidate's assessment and preparation while awaiting a response; the bounded discovery may continue with other candidates. Do not repeatedly ask the model or launch a new search.
 
-A response for an already tracked opportunity starts a targeted update through T1 and then T4, with zero discovery searches. If the opportunity has not yet been tracked, retain the clarification with its candidate and validation references and have the student resolve its tracking status before using that shortcut. A clarification response alone is not validation, permission to fabricate a collection entry, or approval of final materials.
+A response for an already tracked opportunity starts a targeted update through T1, T3, and T4 after successful revalidation, with zero discovery searches. During the current discovery, hold this candidate with its evidence/version and question while other candidates continue; T7 persists all dispositions and the local spreadsheet before run completion. A held unvalidated candidate stays in separate pending state and must pass T3 after a response. A clarification response alone is not validation, permission to fabricate a spreadsheet entry, or approval of final materials.
 
 ## 2. Inputs
 
 ### Input 1
 
 - **Input name:** Targeted clarification request
-- **Contents and format:** Opportunity ID or candidate ID, run ID, T4's escalated Status, Result or recommendation, Evidence summary, Unresolved issues, and Handoff note. Include the exact question, source references, prior clarification attempts, and whether the opportunity is already tracked.
-- **Source:** T4: Assess Opportunity Fit. T5: Recommend Next Actions may route an escalated assessment here if it reaches T5 without resolution.
+- **Contents and format:** Opportunity or candidate ID, run ID, T4's escalated or supported-partial Status, available provisional score range or insufficient-evidence status, Evidence summary, Unresolved issues, and Handoff note or checked T5 recommendation. Include the exact student-answerable question, resume/posting references, prior attempts, and whether the opportunity is tracked.
+- **Source:** T4: Assess Opportunity Fit for an unresolved assessment; T5: Recommend Next Actions for a checked partial assessment with a material student-answerable question.
 
 ### Input 2
 
@@ -40,14 +40,14 @@ A response for an already tracked opportunity starts a targeted update through T
 
 - **Output name:** Student clarification
 - **Contents and format:** Response record with opportunity or candidate ID, clarification ID, original run ID, exact question and answer, source references, response time, and explicit distinctions among new facts, preference decisions, and remaining unknowns.
-- **Next task or recipient:** T1: Retrieve Student Context, then T4: Assess Opportunity Fit for a valid targeted update involving the already tracked opportunity.
-- **Complete when:** The response is traceable to the correct issue and is ready for T1/T4 to examine. Receiving a response does not itself establish that the assessment is supported.
+- **Next task or recipient:** T1: Retrieve Student Context, then T3: Validate Opportunities and T4: Assess Opportunity Fit after successful validation of the single saved target, with zero discovery searches.
+- **Complete when:** The response is traceable to the correct issue and is ready for T1/T3/T4 to examine. Receiving a response does not itself establish that the assessment is supported.
 
 ### Output 2
 
 - **Output name:** Targeted handoff status
 - **Contents and format:** Status awaiting student, response received, or still unresolved; identified opportunity; unanswered issue; responsible student; deadline; and the evidence or decision needed next. Preserve earlier attempts and answers.
-- **Next task or recipient:** The student and the local pending-handoff record used by T1.
+- **Next task or recipient:** The student and T7 for persistence with the other candidate dispositions before the bounded run ends; T1 uses the saved handoff on a later targeted run.
 - **Complete when:** The question and current state are visible and affected assessment, recommendation, and preparation work remains paused until the required issue is resolved.
 
 ## 4. Planned Tools
@@ -60,7 +60,7 @@ A response for an already tracked opportunity starts a targeted update through T
 - **Implementation Route:** File operations and functions/scripts to present the supplied evidence and question and record the student's explicit response.
 - **Integration approach:** Direct integration.
 - **Role in this task:** Support the human handoff for one opportunity. The tool cannot answer the question, research other opportunities, decide eligibility, update final materials, or expand the student's request.
-- **Task timeout:** Human response deadline: one business day after assignment. The active automated run ends immediately on handoff; each supporting display or save operation has a five-second limit. Display any earlier posting deadline as context, without treating urgency as permission to proceed.
+- **Task timeout:** Human response deadline: one business day after assignment. End this candidate's assessment immediately; other candidates may continue, then T7 persists all available results before the run ends. Never wait for a human response inside automation. Each supporting display/save operation has a five-second limit; T7 retains its own deadline. Show any earlier posting deadline as context without treating urgency as permission to proceed.
 - **Maximum retries:** Not applicable — manual task.
 - **Retry only when:** Not applicable.
-- **On timeout, exhausted retries, or an error that cannot be retried:** Keep status awaiting student, mark the response overdue, and retain the exact unresolved question. A supporting tool failure is reported to the student with the affected clarification ID. Do not assume an answer, continue assessment, or describe the opportunity as resolved.
+- **On timeout, exhausted retries, or an error that cannot be retried:** Keep status awaiting student, mark the response overdue, and retain the exact unresolved question. A supporting tool failure is reported to the student with the affected clarification ID and makes the run operationally incomplete. A failed save cannot be described as a durable handoff. Do not assume an answer, continue assessment, or describe the opportunity as resolved.
