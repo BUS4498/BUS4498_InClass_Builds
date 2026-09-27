@@ -1,3 +1,11 @@
+import { g2LeadLabel } from './g2-domain.mjs';
+export function libraryItem(row,jsonColumn,visibility=[]){
+ const r=jsonColumn(row.record)||{},p=r.posting||{};
+ return {id:row.opportunity_id,mode:row.data_mode,role:g2LeadLabel(r),employer:p.employer||null,
+  url:p.url||r.url,source:r.source||'Saved source',source_checked:!!(p.role&&p.employer&&p.checked_at),
+  reason:r.reason||r.access_reason||null,disposition:r.disposition||r.access||'unknown',last_seen:row.created_at,
+  archived:visibility.some(v=>v.data_mode===row.data_mode&&v.opportunity_id===row.opportunity_id&&v.archived)};
+}
 export function cleanupRequest(p){
  if(!p||!['archive','restore'].includes(p.action)||p.confirmed!==true||!Number.isInteger(p.expectedRevision)||p.expectedRevision<0||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.requestKey||''))return null;
  if(!Array.isArray(p.items)||!p.items.length||p.items.length>500)return null;
@@ -10,7 +18,7 @@ export function createOpportunityLibrary({sql,reply,jsonColumn}){
   const [workspace]=await sql`select opportunity_revision from career_prep.owners where id=${owner}`;
   const rows=await sql`select distinct on (data_mode,opportunity_id) data_mode,opportunity_id,record,created_at,version_number from career_prep.opportunity_ledger where owner_id=${owner} and opportunity_id is not null order by data_mode,opportunity_id,version_number desc`;
   const visibility=await sql`select data_mode,opportunity_id,archived from career_prep.opportunity_visibility where owner_id=${owner}`;
-  return reply({ok:true,revision:workspace.opportunity_revision,items:rows.map(row=>{const r=jsonColumn(row.record)||{},p=r.posting||{};return {id:row.opportunity_id,mode:row.data_mode,role:p.role||r.title||'Unverified posting',employer:p.employer||'Employer not verified',url:p.url||r.url,disposition:r.disposition||r.access||'unknown',last_seen:row.created_at,archived:visibility.some(v=>v.data_mode===row.data_mode&&v.opportunity_id===row.opportunity_id&&v.archived)};})});
+  return reply({ok:true,revision:workspace.opportunity_revision,items:rows.map(row=>libraryItem(row,jsonColumn,visibility))});
  }
  async function update(owner,payload){
   const p=cleanupRequest(payload);if(!p)return reply({ok:false,message:'Choose 1–500 saved postings and confirm archive or restore.'},422);

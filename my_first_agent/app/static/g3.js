@@ -21,12 +21,12 @@
   }
   function card(c){
     const p=c.posting||{},a=c.assessment,el=make('article',undefined,'posting-card fit-card');
-    const heading=make('div',undefined,'fit-card-heading'),identity=make('div');identity.append(make('p',p.employer||'Employer not verified','eyebrow'),make('h3',p.role||c.title||'Posting'));heading.append(identity);
+    const heading=make('div',undefined,'fit-card-heading'),identity=make('div');identity.append(make('p',p.employer||'Employer not verified','eyebrow'),make('h3',p.role||c.display_label||c.title||'Source check needed'));heading.append(identity);
     if(a?.score)heading.append(make('span',a.score.label,'fit-score'));el.append(heading);
     if(c.presentation?.rank)el.append(make('p',`Fit rank ${c.presentation.rank} · ${c.presentation.reason}`,'hint'));
     el.append(make('p',[p.location||'Location unknown',p.role_type||'Role type unknown',p.remote?'Remote work stated':'Work arrangement not confirmed'].join(' · ')));
     const details=make('dl',undefined,'posting-facts');for(const [name,value]of [['Start',p.start_date||'Exact date unknown'],['Pay',payText(p.compensation)],['Posted',p.posted_date||'Not stated'],['Deadline',p.deadline||'Not stated']])details.append(make('dt',name),make('dd',value));el.append(details);
-    el.append(link(p.url||c.url,'View checked posting'),make('small',`Source checked ${p.checked_at?new Date(p.checked_at).toLocaleString():'not verified'} · availability ${p.availability||'unknown'}`));
+    el.append(link(p.url||c.url,p.checked_at?'View checked posting':'Open discovery link'),make('small',`Source checked ${p.checked_at?new Date(p.checked_at).toLocaleString():'not verified'} · availability ${p.availability||'unknown'}`));
     if(a){
       const status=make('div',undefined,'fit-status');status.append(make('p',`Eligibility: ${label(a.eligibility)}`,a.eligibility==='conflict'?'error-note':''),make('p',`Preparation readiness: ${label(a.readiness)}`));el.append(status);
       if(a.eligibility==='conflict')el.append(make('p','A supported conflict or required gap remains. A fit score does not remove it.','error-note'));

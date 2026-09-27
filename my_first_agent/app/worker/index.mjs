@@ -5,6 +5,8 @@ const operations = new Map([
   ['/api/g1/context', 'retrieve_student_context'],
   ['/api/g1/handoff', 'request_student_clarification'],
   ['/api/g1/reset', 'reset_student_setup'],
+  ['/api/workspace/reset-preview','preview_full_reset'],
+  ['/api/workspace/reset-all','reset_all_student_data'],
   ['/api/g4/start','start_targeted_preparation'],
   ['/api/g4/materials','list_preparation'],
   ['/api/g4/revision','save_material_revision'],

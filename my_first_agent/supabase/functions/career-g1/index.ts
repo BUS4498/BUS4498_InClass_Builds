@@ -10,6 +10,7 @@ import { createG2 } from '../_shared/g2-runtime.ts';
 import { createG3 } from '../_shared/g3-runtime.mjs';
 import { resumeSummary, validateResumeReview, resetStudentSetup } from '../_shared/g1-review.mjs';
 import { createOpportunityLibrary } from '../_shared/opportunity-library.mjs';
+import { createWorkspaceReset } from '../_shared/workspace-reset.mjs';
 
 const SECRET = Deno.env.get('CAREER_G1_GATEWAY_SECRET');
 const DB_URL = Deno.env.get('SUPABASE_DB_URL');
@@ -55,7 +56,7 @@ async function authenticate(request: Request, body: Uint8Array) {
   if (!exactEmail(envelope.identity_email) || !/^[0-9a-f-]{36}$/i.test(envelope.request_id || '') ||
       !/^[0-9a-f-]{36}$/i.test(envelope.nonce || '') ||
       !Number.isFinite(envelope.expires_at_ms) || envelope.expires_at_ms < now || envelope.expires_at_ms > now + 30_000 ||
-      !['preview_resume','save_student_setup','reset_student_setup','retrieve_student_context','request_student_clarification',
+      !['preview_resume','save_student_setup','reset_student_setup','preview_full_reset','reset_all_student_data','retrieve_student_context','request_student_clarification',
         'start_discovery','step_discovery','list_discoveries','download_discovery_export','answer_validation_question','start_targeted_preparation','list_preparation','save_material_revision','record_student_review','download_material','list_opportunity_library','update_opportunity_library'].includes(envelope.operation))
     return { ok: false, response: reply({ ok: false, code: 'INVALID_ENVELOPE' }, 401) };
   const digest = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', body)));
@@ -264,6 +265,7 @@ const assessment = createG3({apiKey:Deno.env.get('OPENAI_API_KEY')});
 const preparation = createG4({sql,storage,reply,jsonColumn,model:createG4Model({apiKey:Deno.env.get('OPENAI_API_KEY')})});
 const g2 = createG2({ sql, storage, reply, retrieveContext, jsonColumn, assessment, preparation });
 const library = createOpportunityLibrary({sql,reply,jsonColumn});
+const workspaceReset = createWorkspaceReset({sql,storage,reply});
 Deno.serve(async request => {
   if (request.method !== 'POST') return reply({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
   const body = new Uint8Array(await request.arrayBuffer());
@@ -277,6 +279,8 @@ Deno.serve(async request => {
   catch { return reply({ ok: false, code: 'INVALID_JSON' }, 400); }
   try {
     const owner = await ownerId(auth.envelope.identity_email);
+    return await workspaceReset.guard(owner,auth.envelope.request_id,auth.envelope.operation,async()=>{
+    if(['preview_full_reset','reset_all_student_data'].includes(auth.envelope.operation))return await workspaceReset[auth.envelope.operation](owner,payload);
     if(['list_preparation','save_material_revision','record_student_review','download_material'].includes(auth.envelope.operation))return await preparation[auth.envelope.operation](owner,payload);
     if(Object.hasOwn(library,auth.envelope.operation))return await library[auth.envelope.operation](owner,payload);
     if (Object.hasOwn(g2, auth.envelope.operation)) return await g2[auth.envelope.operation](owner,payload);
@@ -287,6 +291,8 @@ Deno.serve(async request => {
       case 'retrieve_student_context': return await retrieveContext(owner, payload);
       case 'request_student_clarification': return await respondToHandoff(owner, payload);
     }
+    return reply({ok:false,code:'UNKNOWN_OPERATION'},400);
+    });
   } catch { return reply({ ok: false, code: 'OPERATION_FAILED', message: 'The operation could not be confirmed. Inspect saved state before trying another action.' }, 503); }
   return reply({ ok: false, code: 'UNKNOWN_OPERATION' }, 400);
 });

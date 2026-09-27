@@ -1,4 +1,4 @@
-import { G2_LIMITS, G2_SOURCES, g2NewState, g2Reserve, g2Authority, g2SearchSources, g2AddLeads, g2ParsePosting, g2Validate, g2Canonical } from './g2-domain.mjs';
+import { G2_LIMITS, G2_SOURCES, g2NewState, g2Reserve, g2Authority, g2SearchSources, g2AddLeads, g2ParsePosting, g2Validate, g2Canonical, g2LeadLabel } from './g2-domain.mjs';
 import { g2Workbook, g2WorkbookManifest } from './g2-workbook.mjs';
 import { G2_FIXTURE_NOTICE, g2FixtureSearch, g2FixturePage } from './g2-fixtures.mjs';
 import { G2_REGISTRY_TEXT } from './g2-registry.mjs';
@@ -24,7 +24,7 @@ export function createG2({ sql, storage, reply, retrieveContext, jsonColumn, ass
       counters:s.counters, coverage:s.plan, issues:s.issues, stopping_reason:s.stopping_reason,
       ledger_status:s.ledger_status, export_status:s.export_status, export_id:s.export_id||null,
       export_version:s.export_version||null, export_row_count:s.export_row_count??null,
-      trigger:s.trigger, preparation_request:s.preparation_request||null, candidates:s.results||s.leads, awaiting_operation:!!s.inflight, ranking:s.ranking||null,
+      trigger:s.trigger, preparation_request:s.preparation_request||null, candidates:(s.results||s.leads).map((r:any)=>({...r,display_label:g2LeadLabel(r)})), awaiting_operation:!!s.inflight, ranking:s.ranking||null,
       preparation_calls:s.preparation_calls||0, assessment_counters:s.g3?{model_calls:s.g3.model_calls,tool_calls:s.g3.tool_calls,recommendation_calls:s.g3.recommendation_calls}:null,
       notice:s.mode==='synthetic'?(s.g3?'SYNTHETIC ASSESSMENT TEST: separate fictional student evidence, employers, and URLs. No live discovery or model calls.':G2_FIXTURE_NOTICE):s.g3?'Evidence-backed assessment of the checked postings. Fit, eligibility, and readiness are separate.':'G2 discovery and logging. Fitness, eligibility, and readiness have not been assessed.' };
   }

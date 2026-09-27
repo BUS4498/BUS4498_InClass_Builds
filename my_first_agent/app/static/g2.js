@@ -40,7 +40,7 @@
     otherBox.append(make('summary',`Other screened leads (${other.length}) · exclusions and access issues`));
     cards.append(checkedBox,heldBox);if(other.length)cards.append(otherBox);
     if(!run.candidates.length)cards.append(make('p',run.status==='running'?'No leads recorded yet.':'No leads were returned. The coverage log explains what was attempted.'));
-    for(const r of run.candidates){const p=r.posting||{},card=make('article',undefined,'posting-card');card.append(make('span',label(r.disposition||r.access),'posting-status'),make('h3',p.role||r.title||'Unverified lead'),make('p',p.employer||'Employer not verified'),make('p',r.reason||r.access_reason||'Waiting for source verification.'));
+    for(const r of run.candidates){const p=r.posting||{},card=make('article',undefined,'posting-card');card.append(make('span',label(r.disposition||r.access),'posting-status'),make('h3',p.role||r.display_label||r.title||'Source check needed'),make('p',p.employer||'Employer not verified'),make('p',r.reason||r.access_reason||'Waiting for source verification.'));
       if(p.location)card.append(make('p',p.location));if(p.start_date)card.append(make('p',`Stated start: ${p.start_date}`));
       card.append(link(r.url,'Discovery source'));if(p.url&&p.url!==r.url)card.append(document.createTextNode(' · '),link(p.url,'Checked employer posting'));
       if(p.checked_at)card.append(make('small',`Checked ${new Date(p.checked_at).toLocaleString()} · ${p.availability} availability`));
@@ -61,7 +61,7 @@
     try{for(let step=0;step<260&&selected.status==='running';step++){
       const data=await call('/api/g2/step',{runId:selected.id,expectedRevision:selected.revision});
       if(data.run)render(data.run);if(!data.ok){message(data.message||`Stopped: ${label(data.code)}. Inspect the run before continuing.`);return;}
-    }message(['complete','awaiting_student'].includes(selected.status)?'Results and workbook saved. Review the evidence, next steps, and any questions below.':selected.status==='running'?'Progress saved. Select Continue saved run to complete the remaining steps.':'The run stopped with an issue. Available evidence and storage status are shown below.');await refresh();}
+    }const checked=selected.candidates.filter(c=>c.posting?.checked_at).length,scored=selected.ranking?.scored_total||0,unchanged=selected.candidates.filter(c=>c.disposition==='excluded_unchanged').length;message(['complete','awaiting_student'].includes(selected.status)?`${scored} new fit scores; ${checked} posting details checked${unchanged?`; ${unchanged} already saved unchanged`:''}. ${scored?'Review your recommendations below.':'No new scored recommendations. Review source checks and saved postings below.'} Run log and workbook saved.`:selected.status==='running'?'Progress saved. Select Continue saved run to complete the remaining steps.':'The run stopped with an issue. Available evidence and storage status are shown below.');await refresh();}
     catch{message('Connection interrupted. The request was not retried. Use Inspect saved runs to check what was recorded.');}
     finally{controls(false);}
   }

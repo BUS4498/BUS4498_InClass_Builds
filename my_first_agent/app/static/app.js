@@ -42,10 +42,10 @@ function clearForm(){
   $('#resume-summary').value='';$('#summary-confirmed').checked=false;$('#answer-panel').hidden=true;
   for(const id of ['start-date','end-date','role-interests','location','available-hours','available-locations','minimum-pay','pay-currency','authorized-us','remote-available'])$('#'+id).value='';
   $('#internship').checked=false;$('#entry-level').checked=false;
-  $('#file-feedback').textContent='Choose a resume to start your new setup. Saved originals are retained.';
+  $('#file-feedback').textContent='Choose a resume to start your new setup.';
   $('#question-kind').textContent='NEW SETUP';$('#question-heading').textContent='Ready for a fresh start';
   $('#question-text').textContent='Upload your resume and confirm its summary and search focus.';
-  $('#question-detail').textContent='Your earlier opportunities and downloads remain on the Opportunities page.';
+  $('#question-detail').textContent='Confirm a new setup before starting another search.';
   setReady(false);
 }
 async function toBase64(file) {
@@ -248,5 +248,6 @@ $('#reset-confirm').addEventListener('click',async()=>{
   finally{$('#reset-confirm').disabled=false;}
 });
 window.addEventListener('beforeunload',event=>{if(state.dirty){event.preventDefault();event.returnValue='';}});
+window.addEventListener('career:full-reset-complete',()=>{clearForm();state.dirty=false;});
 document.body.dataset.previewScript = 'ready';
 initialize();

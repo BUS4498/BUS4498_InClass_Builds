@@ -118,6 +118,23 @@ identities remain release gates. Local tests alone do not establish readiness.
 
 ### Pages, resume review, and reset
 
+`POST /api/workspace/reset-preview` shows owner-specific deletion counts. The separate
+`POST /api/workspace/reset-all` permanently deletes that student's setup, resume
+versions, all live/synthetic run history, opportunities, answers, archive history,
+preparation drafts/reviews, and private files. It requires the literal confirmation
+`RESET`, a request key, and the previewed setup revision. It keeps the sign-in owner
+record; files already downloaded to a device are outside its scope. Request leases
+block reset during another active operation. A partially completed reset blocks
+other actions until the same request is explicitly continued. Storage objects are
+removed through the Storage API, including orphaned files under the exact owner
+prefix. Apply `20260927231609_full_workspace_reset.sql` before deploying this code.
+
+The reader accepts exact-job Greenhouse embedded JSON as well as JobPosting JSON-LD,
+including USAJOBS entity-encoded script types and string agency names. Citation titles
+and URL-derived labels are discovery metadata only. A recognized career-site domain
+does not itself establish employer verification. The saved list defaults to checked
+posting details; unchecked leads remain available with their link and reason.
+
 My setup (`/setup`), Opportunities (`/opportunities`), Preparation (`/preparation`), and Schedule (`/schedule`) are separate page views with direct navigation and browser history. Schedule remains visibly pending its later feature group. Check the facts uses an editable source-derived summary, a single confirmation control, and collapsed source passages. The final summary is stored with the scope version; edits clear confirmation. `POST /api/g1/reset` starts a new setup, preserves historical records and exports, checks the owner workspace revision, and refuses active runs. A new resume upload and confirmed setup are required after reset.
 
 ### Archive and restore
