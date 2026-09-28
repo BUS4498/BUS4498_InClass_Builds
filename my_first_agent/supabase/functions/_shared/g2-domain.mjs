@@ -124,7 +124,7 @@ export function g2LeadLabel(lead) {
   if (clean(lead.title)) return clean(lead.title);
   const url=g2PublicUrl(lead.url);if(!url)return 'Source check needed';
   const u=new URL(url), parts=u.pathname.split('/').filter(Boolean);
-  const slug=u.hostname.endsWith('simplify.jobs')?parts[2]:u.hostname.endsWith('ziprecruiter.com')?parts[parts.indexOf('Job')+1]:null;
+  const slug=u.hostname.endsWith('simplify.jobs')?parts[2]:(u.hostname==='ziprecruiter.com'||u.hostname.endsWith('.ziprecruiter.com'))?parts[parts.indexOf('Job')+1]:null;
   if(slug){try{return decodeURIComponent(slug).replaceAll('-',' ').slice(0,200)+' (from link)';}catch{}}
   const id=u.searchParams.get('jk')||u.searchParams.get('jid')||parts.at(-1);
   return `${lead.source||u.hostname} lead${id?' · '+id.slice(0,80):''}`;
