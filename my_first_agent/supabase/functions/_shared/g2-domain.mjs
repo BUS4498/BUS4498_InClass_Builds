@@ -159,7 +159,7 @@ export function g2ParsePosting(html, url, authority, now) {
   const jobs = [];
   const visit = v => { if (!v || typeof v !== 'object') return; if (Array.isArray(v)) { v.forEach(visit); return; }
     if ([v['@type']].flat().includes('JobPosting')) jobs.push(v); if (v['@graph']) visit(v['@graph']); };
-  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1];
     if(g2Text(type).toLowerCase()!=='application/ld+json')continue;
     try { visit(JSON.parse(match[2])); } catch { /* malformed structured data is not evidence */ }
