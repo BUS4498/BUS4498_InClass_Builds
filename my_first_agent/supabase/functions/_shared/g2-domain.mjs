@@ -85,7 +85,11 @@ export function g2SearchSources(response) {
   const a = calls[0].action;
   if (!Array.isArray(a.sources)) throw new Error('SEARCH_SOURCES_UNAVAILABLE');
   const queries = Array.isArray(a.queries) ? a.queries.filter(q => typeof q === 'string') : typeof a.query === 'string' ? [a.query] : null;
-  return { sources: a.sources.filter(s => typeof s.url === 'string').map(s => ({ url: s.url, title: clean(s.title).slice(0,300) })), queries, observed: 1 };
+  const titles = new Map();
+  for (const message of response.output || []) for (const part of message.content || [])
+    for (const cite of part.annotations || []) if (cite.type === 'url_citation' && cite.url && cite.title)
+      titles.set(g2PublicUrl(cite.url), clean(cite.title).slice(0,300));
+  return { sources: a.sources.filter(s => typeof s.url === 'string').map(s => ({ url: s.url, title: clean(s.title).slice(0,300) || titles.get(g2PublicUrl(s.url)) || '' })), queries, observed: 1 };
 }
 export function g2AddLeads(state, item, results, now) {
   item.queries = results.queries; item.status = 'used'; item.checked_at = now;
@@ -112,38 +116,78 @@ export function g2AddLeads(state, item, results, now) {
 export function g2Text(html) {
   return clean(String(html || '').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ')
     .replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>')
-    .replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&#(\d+);/g,(_,n)=>Number(n)>0&&Number(n)<=0x10ffff?String.fromCodePoint(Number(n)):' '));
+    .replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&#x([\da-f]+);/gi,(_,n)=>parseInt(n,16)>0&&parseInt(n,16)<=0x10ffff?String.fromCodePoint(parseInt(n,16)):' ').replace(/&#(\d+);/g,(_,n)=>Number(n)>0&&Number(n)<=0x10ffff?String.fromCodePoint(Number(n)):' '));
+}
+// Labels are discovery metadata, never job evidence or input to assessment.
+export function g2LeadLabel(lead) {
+  if (lead.posting?.role) return lead.posting.role;
+  if (clean(lead.title)) return clean(lead.title);
+  const url=g2PublicUrl(lead.url);if(!url)return 'Source check needed';
+  const u=new URL(url), parts=u.pathname.split('/').filter(Boolean);
+  const slug=u.hostname.endsWith('simplify.jobs')?parts[2]:(u.hostname==='ziprecruiter.com'||u.hostname.endsWith('.ziprecruiter.com'))?parts[parts.indexOf('Job')+1]:null;
+  if(slug){try{return decodeURIComponent(slug).replaceAll('-',' ').slice(0,200)+' (from link)';}catch{}}
+  const id=u.searchParams.get('jk')||u.searchParams.get('jid')||parts.at(-1);
+  return `${lead.source||u.hostname} lead${id?' · '+id.slice(0,80):''}`;
+}
+export function g2PostingIdentity(value) {
+  const safe=g2PublicUrl(value);if(!safe)return null;
+  const u=new URL(safe);
+  // These ATS query strings are attribution only; board and posting ID identify the job.
+  if(['job-boards.greenhouse.io','boards.greenhouse.io'].includes(u.hostname)&&/^\/[^/]+\/jobs\/\d+\/?$/.test(u.pathname))
+    return 'greenhouse:'+u.pathname.replace(/\/$/,'');
+  return safe;
+}
+function greenhouseJob(html,url){
+  const u=new URL(url);if(!['job-boards.greenhouse.io','boards.greenhouse.io'].includes(u.hostname))return null;
+  const path=u.pathname.match(/^\/([^/]+)\/jobs\/(\d+)\/?$/);if(!path)return null;
+  for(const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)){
+    const raw=script[1].trim().match(/^window\.__remixContext\s*=\s*(\{[\s\S]*\});?$/);if(!raw)continue;
+    try{
+      const data=JSON.parse(raw[1]);const loader=data.state?.loaderData;
+      const matches=Object.values(loader||{}).filter(v=>v?.jobPost);
+      if(matches.length!==1)return null;
+      const j=matches[0].jobPost;
+      if(j.post_type!=='job_post'||g2PostingIdentity(j.public_url)!==g2PostingIdentity(url)||!j.company_name||!j.title||!j.content)return null;
+      return {'@type':'JobPosting',title:j.title,hiringOrganization:{name:j.company_name},description:j.content,
+        url:j.public_url,identifier:{value:path[2]},jobLocation:j.job_post_location||j.location||j.location_name,datePosted:j.published_at,
+        validThrough:j.application_deadline||null,_format:'Greenhouse embedded jobPost'};
+    }catch{/* Never execute page scripts; only parse an exact JSON assignment. */}
+  }
+  return null;
 }
 export function g2ParsePosting(html, url, authority, now) {
   const jobs = [];
   const visit = v => { if (!v || typeof v !== 'object') return; if (Array.isArray(v)) { v.forEach(visit); return; }
     if ([v['@type']].flat().includes('JobPosting')) jobs.push(v); if (v['@graph']) visit(v['@graph']); };
-  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
-    try { visit(JSON.parse(match[1])); } catch { /* malformed structured data is not evidence */ }
+  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
+    const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1];
+    if(g2Text(type).toLowerCase()!=='application/ld+json')continue;
+    try { visit(JSON.parse(match[2])); } catch { /* malformed structured data is not evidence */ }
   }
+  if(!jobs.length){const j=greenhouseJob(html,url);if(j)jobs.push(j);}
   if (jobs.length !== 1) return { ok: false, reason: jobs.length ? 'Page contains multiple jobs; exact posting identity is ambiguous.' : 'No readable structured JobPosting on this page.' };
-  const j = jobs[0], role = g2Text(j.title), employer = g2Text(j.hiringOrganization?.name);
+  const j = jobs[0], role = g2Text(j.title), employer = g2Text(typeof j.hiringOrganization==='string'?j.hiringOrganization:j.hiringOrganization?.name);
   if (!role || !employer || !j.description) return { ok: false, reason: 'Posting lacks employer, title, or description evidence.' };
   const statedUrl = j.url ? g2PublicUrl(j.url) : null;
-  if (j.url && (!statedUrl || statedUrl !== g2PublicUrl(url))) return { ok: false, reason: 'Structured posting URL does not match the checked page.' };
+  if (j.url && (!statedUrl || g2PostingIdentity(statedUrl) !== g2PostingIdentity(url))) return { ok: false, reason: 'Structured posting URL does not match the checked page.' };
   const description = g2Text(j.description).slice(0,40000);
   const locations = [j.jobLocation].flat().filter(Boolean).map(l => typeof l === 'string' ? l : [l.address?.addressLocality,l.address?.addressRegion,l.address?.addressCountry].filter(Boolean).join(', '));
-  const date = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0,10) : null;
+  const date = value => {if(typeof value!=='string')return null;const us=value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);const iso=us?`${us[3]}-${us[1]}-${us[2]}`:value.slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso?iso:null;};
   const closed = (date(j.validThrough) && date(j.validThrough) < now.slice(0,10)) || /this (?:job|position|posting) (?:is no longer available|has been filled)|no longer accepting applications/i.test(g2Text(html));
   const titleText = `${role} ${clean(j.employmentType)}`;
   const role_type = /intern(?:ship)?\b/i.test(titleText) ? 'internship' : /entry[ -]level|\bjunior\b|new grad|graduate (?:program|analyst|engineer)/i.test(titleText) ? 'entry-level' : null;
   const fields = [j.qualifications,j.skills,j.experienceRequirements,j.educationRequirements,j.responsibilities].filter(Boolean).map(g2Text);
   const pay = j.baseSalary ? clean(JSON.stringify(j.baseSalary)).slice(0,2000) : null;
   const jobId = clean(j.identifier?.value || (typeof j.identifier === 'string' ? j.identifier : '')) || null;
-  return { ok: true, posting: { employer, role, role_type, job_id: jobId, url, authority, checked_at: now,
+  return { ok: true, posting: { employer, role, role_type, job_id: jobId, url, authority, checked_at: now, source_format:j._format||'JobPosting JSON-LD',
     location: locations.join('; ') || null, remote: j.jobLocationType === 'TELECOMMUTE' ? true : null,
     description, requirements: fields, start_date: date(j.jobStartDate || j.startDate), deadline: date(j.validThrough),
-    posted_date: date(j.datePosted), compensation: pay, availability: closed ? 'closed' : authority === 'official USAJOBS' && date(j.validThrough) ? 'open' : 'unknown',
+    posted_date: date(j.datePosted), work_hours: typeof j.workHours==='string'?g2Text(j.workHours):null, compensation: pay, availability: closed ? 'closed' : authority === 'official USAJOBS' && date(j.validThrough) ? 'open' : 'unknown',
     evidence: [{ id: 'posting:title', text: role }, { id: 'posting:employer', text: employer }, { id: 'posting:description', text: description },
       ...fields.map((text,i)=>({id:`posting:criterion:${i+1}`,text}))] } };
 }
 export function g2Material(posting) {
-  const keys = ['employer','role','location','remote','start_date','deadline','compensation','availability','requirements','description'];
+  const keys = ['employer','role','location','remote','start_date','deadline','compensation','work_hours','availability','requirements','description'];
   return JSON.stringify(keys.map(k=>[k,typeof posting[k]==='boolean'?posting[k]:Array.isArray(posting[k])?posting[k].map(g2Normalize):g2Normalize(posting[k])]));
 }
 export function g2Validate(lead, scope, history = []) {
@@ -155,7 +199,7 @@ export function g2Validate(lead, scope, history = []) {
   if (p.availability === 'closed') return excluded('excluded_closed', 'The posting explicitly closed or its stated deadline passed.');
   if (p.authority === 'official USAJOBS' && p.availability !== 'open') return excluded('excluded_unverified', 'A currently open official federal announcement is required; open status was not established.');
   if (!p.role_type || !scope.role_types.includes(p.role_type)) return excluded('excluded_role_type', 'Selected role-type relevance is not established by this posting.');
-  const words = g2Normalize(`${p.role} ${p.description}`);
+  const words = g2Normalize(`${p.role} ${p.description} ${(p.requirements||[]).join(' ')}`);
   const relevant = scope.role_interests.some(interest => g2Normalize(interest).split(' ').filter(w=>w.length>2).every(w => words.includes(w) || (w==='analytics' && words.includes('analyst'))));
   if (!relevant) return excluded('excluded_role_interest', 'The supplied posting does not establish the chosen role-interest relevance.');
   const years = [Number(scope.start_date.slice(0,4)), Number(scope.end_date.slice(0,4))];

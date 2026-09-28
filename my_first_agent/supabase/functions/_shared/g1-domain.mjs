@@ -88,6 +88,13 @@ export function validateScope(input) {
   const interests = Array.isArray(input?.roleInterests) ? input.roleInterests.map(s => String(s).trim()).filter(Boolean) : [];
   if (!interests.length)
     return { ok: false, code: 'ROLE_INTEREST_NEEDED', question: 'Which roles or career fields interest you?' };
+  const facts=input.optionalFacts||{};
+  if(typeof facts!=='object'||Array.isArray(facts)||JSON.stringify(facts).length>6000||
+    (facts.available_hours_per_week!==undefined&&(typeof facts.available_hours_per_week!=='number'||!Number.isFinite(facts.available_hours_per_week)||facts.available_hours_per_week<0||facts.available_hours_per_week>168))||
+    ['authorized_to_work_us','remote_available'].some(k=>facts[k]!==undefined&&typeof facts[k]!=='boolean')||
+    (facts.available_locations!==undefined&&(!Array.isArray(facts.available_locations)||facts.available_locations.length>12||facts.available_locations.some(v=>typeof v!=='string'||!v.trim()||v.length>200)))||
+    (facts.minimum_hourly_pay!==undefined&&(!facts.minimum_hourly_pay||typeof facts.minimum_hourly_pay.amount!=='number'||!Number.isFinite(facts.minimum_hourly_pay.amount)||facts.minimum_hourly_pay.amount<0||!/^[A-Z]{3}$/.test(facts.minimum_hourly_pay.currency||''))))
+    return {ok:false,code:'OPTIONAL_FACTS_INVALID',question:'Check your optional facts. Weekly hours must be 0–168; an hourly minimum needs a nonnegative amount and a three-letter currency.'};
   return { ok: true, startDate: start, endDate: end, roleTypes: roles, roleInterests: interests,
     locationPreference: String(input.locationPreference || '').trim() || null,
     optionalFacts: input.optionalFacts || {}, hardConstraints: input.hardConstraints || [] };
