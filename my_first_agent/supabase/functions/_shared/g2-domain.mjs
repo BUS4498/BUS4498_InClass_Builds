@@ -140,7 +140,7 @@ export function g2PostingIdentity(value) {
 function greenhouseJob(html,url){
   const u=new URL(url);if(!['job-boards.greenhouse.io','boards.greenhouse.io'].includes(u.hostname))return null;
   const path=u.pathname.match(/^\/([^/]+)\/jobs\/(\d+)\/?$/);if(!path)return null;
-  for(const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){
+  for(const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)){
     const raw=script[1].trim().match(/^window\.__remixContext\s*=\s*(\{[\s\S]*\});?$/);if(!raw)continue;
     try{
       const data=JSON.parse(raw[1]);const loader=data.state?.loaderData;
