@@ -4,20 +4,25 @@
   const message=text=>q('#g2-message').textContent=text;
   const label=s=>String(s||'not started').replaceAll('_',' ');
   async function call(path,body){const r=await fetch(path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});return r.json();}
-  function controls(value){busy=value;q('#g2-start').disabled=value||!setupReady;q('#g2-synthetic').disabled=value||!setupReady;q('#g2-continue').disabled=value;q('#g2-refresh').disabled=value;q('#reset-setup').disabled=value;for(const b of document.querySelectorAll('.run-chip'))b.disabled=value;}
+  function controls(value){busy=value;q('#g2-start').disabled=value||!setupReady;q('#g2-synthetic').disabled=value||!setupReady;q('#g2-continue').disabled=value;q('#g2-refresh').disabled=value;q('#reset-setup').disabled=value;for(const b of document.querySelectorAll('.run-chip'))b.disabled=value;if(selected)window.CareerSearchProgress?.render(selected,value);}
   window.addEventListener('career:setup-state',e=>{setupReady=e.detail.ready;controls(busy);if(!setupReady&&!busy)message('Confirm and save your resume summary and search focus on My setup before starting another search.');else if(!busy)message('Your confirmed setup is ready for a search.');});
   function link(url,text){const a=make('a',text);if(typeof url==='string'&&url.startsWith('https://')){a.href=url;a.target='_blank';a.rel='noopener noreferrer';}return a;}
   function render(run){
     if(selected?.id!==run.id)q('#g2-save-file').hidden=true;
     selected=run;q('#g2-result').hidden=false;q('#g2-notice').textContent=run.mode==='synthetic'?'SYNTHETIC TEST RUN':'LIVE SEARCH';
+    window.CareerSearchProgress?.render(run,busy);
     q('#g2-heading').textContent=run.status==='running'?`Working: ${label(run.stage)}`:run.status==='complete'?(run.assessment_counters?'Search, assessments, and log complete':'Discovery and log complete'):run.status==='awaiting_student'?'Discovery logged · Your answer is needed':'Discovery needs attention';
+    if(run.status==='complete'&&run.assessment_counters&&!run.candidates.some(c=>c.assessment?.status==='completed'))q('#g2-heading').textContent='Run logged · no completed assessments';
     q('#g2-detail').textContent=`${run.notice} ${run.mode === 'synthetic' ? 'Fixture' : 'Saved'} scope v${run.scope_version}, resume v${run.resume_version}. Hosted search calls: ${run.counters.hosted_reserved} reserved, ${run.counters.hosted_observed} observed${run.mode==='synthetic'?' (simulated reservations; no external calls)':''}.`;
     const grid=q('#g2-counters');grid.replaceChildren();
     const c=run.counters;for(const [name,value]of [[run.mode==='synthetic'?'Simulated search steps':'Search API attempts',c.api_attempts],['Leads screened',c.leads],['Direct posting reads',c.reads],['Pages skipped',c.skipped]]){const box=make('div',undefined,'counter');box.append(make('strong',String(value)),make('span',name));grid.append(box);}
     if(run.assessment_counters){const ac=run.assessment_counters;for(const [name,value]of [['Assessment requests',ac.model_calls],['Evidence tools',ac.tool_calls],['Next-action requests',ac.recommendation_calls],['Logged stable scores',run.ledger_status==='verified'?(run.ranking?.scored_total||0):0]]){const box=make('div',undefined,'counter');box.append(make('strong',String(value)),make('span',name+(run.mode==='synthetic'&&name!=='Logged stable scores'?' (simulated)':'')));grid.append(box);}}
     q('#g2-storage').textContent=`Ledger: ${label(run.ledger_status)} · Workbook: ${label(run.export_status)}${run.export_version?` · snapshot v${run.export_version}, ${run.export_row_count} logged rows`:''}`;
     q('#g2-continue').hidden=run.status!=='running';q('#g2-download').hidden=run.export_status!=='verified'||!run.export_id;
-    const issues=q('#g2-issues');issues.replaceChildren();for(const issue of run.issues)issues.append(make('p',issue,'error-note'));
+    const issues=q('#g2-issues');issues.replaceChildren();for(const issue of run.issues){
+      const text=/REQUIREDNESS_NOT_SUPPORTED|PREFERENCE_NOT_SUPPORTED|POSTING_REQUIREMENT_NOT_CLASSIFIED/.test(issue)?'Assessment stopped because the qualification evidence could not be validated. This is a processing issue, not a judgment about your resume. The discovered postings and workbook were saved.':issue;
+      issues.append(make('p',text,'error-note'));if(text!==issue){const d=make('details');d.append(make('summary','Technical detail'),make('p',issue));issues.append(d);}
+    }
     const body=q('#g2-coverage');body.replaceChildren();
     for(const source of run.coverage){const tr=make('tr');for(const v of [source.name,label(source.status),source.attempts,source.leads,source.reads,source.verified])tr.append(make('td',String(v)));const detail=make('td');detail.append(make('p',`${source.reason||source.route||''}${source.non_posting_references?` · ${source.non_posting_references} search/help references excluded before screening job leads`:''}`));const d=make('details'),sum=make('summary','Search details');d.append(sum,make('p',`Requested: ${source.intent}`),make('p',`Provider queries: ${source.queries===null?'not supplied':source.queries.join(' | ')}`));detail.append(d);tr.append(detail);body.append(tr);}
     const cards=q('#g2-candidates');cards.replaceChildren();
@@ -63,7 +68,7 @@
       if(data.run)render(data.run);if(!data.ok){message(data.message||`Stopped: ${label(data.code)}. Inspect the run before continuing.`);return;}
     }const checked=selected.candidates.filter(c=>c.posting?.checked_at).length,scored=selected.ranking?.scored_total||0,unchanged=selected.candidates.filter(c=>c.disposition==='excluded_unchanged').length;message(['complete','awaiting_student'].includes(selected.status)?`${scored} new fit scores; ${checked} posting details checked${unchanged?`; ${unchanged} already saved unchanged`:''}. ${scored?'Review your recommendations below.':'No new scored recommendations. Review source checks and saved postings below.'} Run log and workbook saved.`:selected.status==='running'?'Progress saved. Select Continue saved run to complete the remaining steps.':'The run stopped with an issue. Available evidence and storage status are shown below.');await refresh();}
     catch{message('Connection interrupted. The request was not retried. Use Inspect saved runs to check what was recorded.');}
-    finally{controls(false);}
+    finally{controls(false);if(selected)window.CareerSearchProgress?.render(selected,false);}
   }
   async function start(mode){
     if(busy||!setupReady)return;controls(true);message(mode==='synthetic'?'Starting a fictional test run…':'Starting one search from your confirmed setup…');

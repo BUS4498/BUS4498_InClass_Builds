@@ -11,7 +11,7 @@
     if(a.score?.rated)detail.append(make('p',`Evidence supports ${a.score.earned_lower}–${a.score.earned_upper} out of ${a.score.total_weight} weighted points. The unrounded fraction is retained for ordering.`));
     for(const c of a.criteria||[]){
       const row=make('div',undefined,'criterion');row.append(make('h4',c.label),make('p',`${label(c.type)} · weight ${c.weight} · ${label(c.status)} · ${c.earned_lower}–${c.earned_upper} points`),make('p',c.explanation));
-      for(const [title,refs] of [['Posting',c.posting],['Student evidence',c.student]])for(const ref of refs||[]){row.append(make('strong',title),make('blockquote',ref.quote),make('small',`${ref.id} · ${ref.reference}`));}
+      for(const [title,refs] of [['Posting',c.posting],['Qualification heading',c.qualifier_context],['Student evidence',c.student]])for(const ref of refs||[]){row.append(make('strong',title),make('blockquote',ref.quote),make('small',`${ref.id} · ${ref.reference}`));}
       if(c.missing)row.append(make('p',`Unknown: ${c.missing} (${c.unknown_owner==='student'?'student fact':'posting fact'})`,'hint'));detail.append(row);
     }
     const constraints=make('details');constraints.append(make('summary','Eligibility, timing, and other constraints'));

@@ -1,4 +1,5 @@
 import { g3ConstraintFindings } from './g3-constraints.mjs';
+import { g3QualifierSupport,g3QualificationCatalog,g3RequirementCovered } from './g3-qualifications.mjs';
 // T4/T5/T7 contracts. Scores, budgets, evidence references and routing are
 // controlled here; model text cannot authorize an operation or choose a weight.
 export const G3_LIMITS = Object.freeze({ taskMs:120000, modelCalls:6, toolCalls:6, toolMs:5000, recommendationMs:60000 });
@@ -52,9 +53,16 @@ export function g3Criteria(input,bundle) {
     if(!g3Text(c.label)||c.label.length>240||!['required','preferred','unclear','interest'].includes(c.type)||!['matched','partly_matched','documented_gap','unknown'].includes(c.status))g3Fail('INVALID_CRITERION');
     const posting=g3Citations(c.posting,bundle,['posting']),student=g3Citations(c.student,bundle,c.type==='interest'?['interest']:['student']);
     if(!posting.length)g3Fail('POSTING_QUALIFICATION_REFERENCE_REQUIRED');
-    const qualificationText=posting.map(e=>e.quote).join(' ');
-    if(c.type==='required'&&!/\b(required|must|minimum|at least|essential|need to|shall)\b/i.test(qualificationText))g3Fail('REQUIREDNESS_NOT_SUPPORTED');
-    if(c.type==='preferred'&&!/\b(preferred|desirable|nice to have|a plus|bonus|ideally)\b/i.test(qualificationText))g3Fail('PREFERENCE_NOT_SUPPORTED');
+    const supports=posting.map(e=>g3QualifierSupport(e,bundle));
+    if(['required','preferred'].includes(c.type)){
+      const supported=supports.some(s=>s.type===c.type)&&!supports.some(s=>s.type!==c.type&&s.type!=='unclear');
+      if(!supported)c={...c,type:'unclear',status:'unknown',basis:'unknown',unknown_owner:'source',
+        missing:`The posting does not clearly establish whether ${c.label} is required or preferred.`,
+        explanation:'The cited qualification is retained as unknown because its requiredness is ambiguous in the source.'};
+    }
+    if(c.status==='matched'&&g3Text(c.missing))c={...c,status:'unknown',basis:'unknown',unknown_owner:'student',explanation:'The comparison names missing evidence, so full fulfillment is not established. '+c.explanation};
+    if(c.status==='matched'&&/\b(gathering|collecting|gather|collect)\b/i.test(posting.map(e=>e.quote).join(' '))&&!/\b(gather\w*|collect\w*|acquir\w*|survey\w*|interview\w*)\b/i.test(student.map(e=>e.quote).join(' ')))
+      c={...c,status:'unknown',basis:'unknown',unknown_owner:'student',missing:'A specific example of collecting or gathering data is not established by the cited student evidence.',explanation:'Analyzing supplied data does not by itself establish experience collecting it.'};
     const identity=g3Norm(c.label),exact=posting.map(e=>`${e.id}|${g3Norm(e.quote)}`).sort().join(';');
     if(seen.has(identity)||seen.has(exact))g3Fail('DUPLICATE_CRITERION');seen.add(identity);seen.add(exact);
     if(c.type==='interest' && (++interests>1||!student.length||c.status!=='matched'))g3Fail('UNSUPPORTED_INTEREST_CRITERION');
@@ -80,7 +88,8 @@ export function g3Criteria(input,bundle) {
     const lower=c.status==='matched'?weight:c.status==='partly_matched'?weight/2:0;
     return {id:`criterion-${i+1}`,label:c.label,type:c.type,status:c.status,basis:c.basis,weight,earned_lower:lower,
       earned_upper:c.status==='unknown'?weight:lower,posting,student,missing:c.status==='unknown'?c.missing:null,
-      unknown_owner:c.status==='unknown'?c.unknown_owner:null,explanation:c.explanation};
+      unknown_owner:c.status==='unknown'?c.unknown_owner:null,explanation:c.explanation,
+      qualifier_context:supports.filter(s=>s.type===c.type&&s.context).map(s=>s.context)};
   });
 }
 
@@ -94,11 +103,9 @@ export function g3Score(criteria) {
 }
 
 export function g3CheckCoverage(criteria,bundle){
-  const explicit=[...(bundle.posting.requirements||[])];
-  const marked=(bundle.posting.description||'').split(/(?<=[.!?])\s+|\n|;/).filter(s=>/\b(required|must|minimum|preferred|essential|nice to have)\b/i.test(s));
-  const units=[...new Set([...explicit.flatMap(s=>s.split(/(?<=[.!?])\s+|\n|;/)),...marked].map(g3Norm).filter(s=>s.length>5))];
+  const units=g3QualificationCatalog(bundle).map(u=>g3Norm(u.quote));
   const quoted=criteria.filter(c=>c.type!=='interest').flatMap(c=>c.posting.map(e=>g3Norm(e.quote)));
-  if(units.some(unit=>!quoted.some(q=>q.includes(unit)||(unit.includes(q)&&q.length>=unit.length*.65))))g3Fail('POSTING_REQUIREMENT_NOT_CLASSIFIED');
+  if(units.some(unit=>!quoted.some(q=>q.includes(unit)||(unit.includes(q)&&q.length>=unit.length*.65)||g3RequirementCovered(unit,q))))g3Fail('POSTING_REQUIREMENT_NOT_CLASSIFIED');
   return true;
 }
 

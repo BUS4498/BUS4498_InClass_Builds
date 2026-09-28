@@ -10,7 +10,7 @@
   <script src="/app.js" defer></script>
   <script src="/g3.js" defer></script>
   <script src="/library.js" defer></script><script src="/reset-all.js" defer></script>
-  <script src="/g2.js" defer></script><script src="/g4.js" defer></script>
+  <script src="/search-progress.js" defer></script><script src="/g2.js" defer></script><script src="/g4.js" defer></script>
 </head>
 <body>
   <div id="mode-banner" class="preview-banner" role="status">Checking private setup connection…</div>
@@ -87,6 +87,14 @@
           <p id="g2-message" class="field-feedback" role="status">Confirm your setup before starting a search.</p>
           <p class="hint">Up to 8 search requests, 40 screened leads, and 24 direct posting reads. Requests are never retried automatically. Keep this tab open during a manual run.</p>
         </div>
+          <section id="search-progress" class="card search-progress" aria-label="Search progress" hidden>
+            <p id="progress-mode" class="eyebrow"></p>
+            <div class="progress-heading"><h2 id="progress-title">Search progress</h2><span id="progress-count"></span></div>
+            <progress id="progress-bar" max="100" value="0" aria-label="Workflow progress"></progress>
+            <ol id="progress-stages" class="progress-stages"></ol>
+            <p id="progress-detail" role="status" aria-live="polite"></p><p id="progress-wait" class="hint"></p>
+            <p class="hint">The bar tracks workflow stages, not elapsed time. Skipped work is labeled; some stages take longer than others.</p>
+          </section>
         <section class="card library-card" aria-labelledby="library-title"><h2 id="library-title">Manage saved opportunities</h2><p>Archive older postings to tidy your results. You can restore them at any time. Earlier scores, answers, and spreadsheet snapshots are preserved.</p><div class="form-actions"><label>Show<select id="library-filter"><option value="active">Active</option><option value="archived">Archived</option></select></label><label>Evidence<select id="library-evidence"><option value="checked">Checked postings</option><option value="unchecked">Needs source check</option><option value="all">All saved leads</option></select></label><label>Mode<select id="library-mode"><option value="all">All postings</option><option value="live">Live postings</option><option value="synthetic">Synthetic samples</option></select></label><button type="button" class="text-button" id="library-refresh">Refresh saved list</button></div><div class="form-actions"><label class="confirm-summary"><input type="checkbox" id="library-all">Select all shown</label><span id="library-count" role="status"></span><button class="secondary-button" id="library-action" type="button" disabled>Archive selected</button></div><div id="library-items" class="library-items"></div><p id="library-message" role="status" class="hint"></p></section>
         <div id="g2-run-list" class="run-list" aria-label="Saved discovery runs"></div>
         <div id="g2-result" hidden>
