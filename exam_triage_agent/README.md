@@ -45,4 +45,10 @@ Build and review **Group 1: working local study loop**: enter inputs, rank topic
 - [Static study rules](docs/context/study-rules.md)
 - [Model paths and sources](docs/references/model-paths.md)
 
-No application code, provider credentials, or example student records are included in this specification starter.
+## Run Group 1 locally
+
+Install Node.js 20 or newer. On Windows, double-click `start.cmd` in this folder. It opens `http://127.0.0.1:4173`; if the browser opens before the server is ready, refresh once. Keep the command window open while using the app. Press **Ctrl+C** in that window to stop. Run `start.cmd` again to reopen the saved plan. Alternatively, run `npm start` from this folder and open the same address. No package installation is needed.
+
+The first screen has no saved exam. **Try a fictional example** fills only the form with clearly labeled fictional values; nothing is saved until you submit. Enter one real exam, then inspect the review index, tie reasons, and sprint timing. After studying, log actual minutes and a new self-rating. You may mark a topic done reviewing, reopen it, or clear all app records with the typed confirmation. The optional provider comparison remains visibly unconnected in Group 1.
+
+Local state is stored in ignored `data/exam-triage.json`. Keep a copy of that file only if you personally want a backup; clearing through the app removes it. Do not commit it or any provider keys. This app binds only to `127.0.0.1` and makes no external calls in Group 1. Run `npm test` for the core and local API checks.

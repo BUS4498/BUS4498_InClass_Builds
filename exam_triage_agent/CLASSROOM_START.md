@@ -1,12 +1,14 @@
 # Classroom start: Exam Triage Agent
 
-This is a repository-ready **specification starter**, not a finished app. Copy the folder's contents into a new student repository or a clearly named app folder in the student's repository. Keep this README, the workflow, every task specification, and both reference files together. No credentials or real student records belong in GitHub.
+This folder contains the specification starter and the **Group 1 local app**. Copy it into a new student repository or a clearly named app folder in the student's repository. Keep the README, workflow, every task specification, and both reference files together. No credentials or real student records belong in GitHub.
 
 ## Before the one-hour build
 
 1. Confirm that the student's GitHub plugin/connection works in Codex or that their GitHub connection works in Claude Code. The build skill will verify the intended repository before publication.
 2. Open the repository and read [README.md](README.md), [the workflow](agent/workflow-of-tasks.md), and the task specifications. Confirm the design baseline or approve a concrete correction plan if the skill finds a real issue.
 3. Choose a **local browser app**. The first feature group needs no provider account. For a live Group 2 demonstration, the instructor can configure their TypeSafe Jev key as `TYPESAFE_API_KEY` in their own local backend's ignored environment file. If an existing private key file calls it `JEV_API_KEY`, map its value to the backend's expected name during secure local setup; do not put the key in the repository, browser, or student copies. A student who later builds Group 2 chooses a provider they can access (Jev, OpenAI, or Claude) and configures their own key outside chat and GitHub. Approve the provider and bounded test scope before any live model request.
+
+To try the provided Group 1 app, install Node.js 20 or newer, double-click `start.cmd`, and use the local browser page. The fictional example is unsaved until submitted. Close the command window with Ctrl+C and reopen with `start.cmd` to verify persistence. Group 2 is unconnected and makes no provider requests.
 
 ## Suggested class sequence
 

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exam Triage Agent</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">ET</span><span>Exam Triage Agent</span></div>
+      <span class="local-pill">Local to this computer</span>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">A clear next study step</p>
+        <h1 id="page-title">Know what to review next.</h1>
+        <p>Enter your own exam and confidence ratings. The app ranks topics by a fixed rule, shows its reasons, and prepares one timed sprint. You decide what to study and what progress to record.</p>
+        <div class="hero-actions"><a class="button primary" href="#setup">Set up my exam</a><button id="fictional-button" class="button ghost" type="button">Try a fictional example</button></div>
+        <p id="example-banner" class="example-banner" hidden>Fictional example loaded into the form. Nothing has been saved. Replace every example value before using this for a real exam.</p>
+      </section>
+
+      <div id="status" class="status" role="status" aria-live="polite">Opening local plan…</div>
+
+      <div class="layout">
+        <section class="card" id="setup" aria-labelledby="setup-title">
+          <div class="section-head"><div><p class="eyebrow">01 / YOUR INPUTS</p><h2 id="setup-title">Exam setup</h2></div><span id="version-label" class="muted">No saved exam</span></div>
+          <p class="subtle">Your ratings are self-reports. You can revise them after a study session.</p>
+          <form id="exam-form" novalidate>
+            <div class="form-grid">
+              <label>Exam name<input id="exam-name" maxlength="100" required placeholder="e.g., Midterm 1"></label>
+              <label>Exam date<input id="exam-date" type="date" required></label>
+              <label>Exam format<select id="exam-format" required><option value="">Choose format</option><option value="problem solving">Problem solving</option><option value="written explanation">Written explanation</option><option value="mixed/multiple choice">Mixed / multiple choice</option></select></label>
+              <label>Minutes available for next sprint<input id="available-minutes" type="number" min="15" max="60" step="1" required placeholder="15–60"></label>
+            </div>
+            <div class="topic-heading"><div><h3>Topics to review</h3><p class="subtle">Add one to six. “Must know” doubles the review index.</p></div><button id="add-topic" class="button small ghost" type="button">+ Add topic</button></div>
+            <div id="topic-rows" class="topic-rows"></div>
+            <p id="form-error" class="field-error" role="alert" hidden></p>
+            <div class="form-actions"><button class="button primary" type="submit">Save and build plan</button><span class="muted">Saved only on this computer</span></div>
+          </form>
+        </section>
+
+        <div class="result-stack">
+          <section class="card" aria-labelledby="rank-title">
+            <div class="section-head"><div><p class="eyebrow">02 / RULE-BASED RESULT</p><h2 id="rank-title">Review order</h2></div><span id="days-label" class="badge">No exam yet</span></div>
+            <p class="subtle">Review index = (4 − confidence) × importance factor. It shows order, not a grade forecast.</p>
+            <div id="rank-content" class="empty-state">Save an exam to see the ranked topics and the evidence for each position.</div>
+          </section>
+          <section class="card" aria-labelledby="sprint-title">
+            <div class="section-head"><div><p class="eyebrow">03 / ONE ACTION</p><h2 id="sprint-title">Your study sprint</h2></div><span id="sprint-version" class="muted"></span></div>
+            <div id="sprint-content" class="empty-state">Your timed sprint appears after you save a topic.</div>
+            <div class="model-note"><strong>Compare a model suggestion</strong><p>This optional Group 2 action is not connected yet. No student data is sent to Jev, OpenAI, or Claude in this build.</p><button class="button small" type="button" disabled>Compare methods · not connected</button></div>
+          </section>
+        </div>
+      </div>
+
+      <section class="card progress-card" aria-labelledby="progress-title">
+        <div class="section-head"><div><p class="eyebrow">04 / YOUR DECISION</p><h2 id="progress-title">Review and log study</h2></div><span class="muted">A displayed sprint is not a completed session</span></div>
+        <div id="progress-content" class="empty-state">Save your exam first. After studying, record actual minutes and your new confidence rating.</div>
+      </section>
+
+      <div class="bottom-grid">
+        <section class="card" aria-labelledby="history-title"><p class="eyebrow">LOCAL RECORD</p><h2 id="history-title">Recent changes</h2><div id="history-content" class="empty-state">No saved changes yet.</div></section>
+        <section class="card danger-card" aria-labelledby="clear-title"><p class="eyebrow">START FRESH</p><h2 id="clear-title">Clear this app's data</h2><p>Remove the saved exam, topic ratings, study sessions, and change history from this computer.</p><button id="show-clear" class="button danger" type="button">Clear all exam data</button><div id="clear-confirm" hidden><label>Type <strong>CLEAR MY EXAM DATA</strong> to confirm<input id="clear-phrase" autocomplete="off"></label><div class="confirm-actions"><button id="confirm-clear" class="button danger" type="button">Permanently clear</button><button id="cancel-clear" class="button ghost" type="button">Cancel</button></div></div></section>
+      </div>
+    </main>
+    <footer>Single-user local app · Fixed arithmetic · Your course materials stay with you</footer>
+  </div>
+</body>
+</html>
