@@ -70,3 +70,11 @@ test('a new day changes days remaining but not the rank index or order', () => {
   assert.equal(first.daysRemaining - later.daysRemaining, 1);
   assert.deepEqual(first.ranking.map(t => [t.id, t.priority]), later.ranking.map(t => [t.id, t.priority]));
 });
+
+test('a saved Group 1 file opens without a provider field or suggestion list', () => {
+  const old = createOrUpdate(null, draft(), now);
+  delete old.sprint.provider;
+  delete old.suggestions;
+  delete old.adoption;
+  assert.equal(view(old, now).sprint.method, 'practice problems');
+});

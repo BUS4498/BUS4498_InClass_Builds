@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 let state = null;
 let fictionalDraft = false;
+let selectedProvider = 'jev';
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const shortDate = (value) => value ? new Date(value).toLocaleString() : 'Never studied in this plan';
 const todayLocal = () => {
@@ -47,13 +48,15 @@ async function load() {
 
 async function action(path, values, success) {
   if (!state) return;
+  const comparing = path === '/api/compare';
+  if (comparing) $('compare-button').disabled = true;
   status('Saving and checking the local file…', 'working');
   try {
     const fresh = await request(path, { expectedRevision: state.snapshot?.revision || 0, ...values });
     state = fresh;
     fictionalDraft = false;
     render();
-    status(success);
+    status(typeof success === 'function' ? success(fresh) : success);
   } catch (error) {
     const target = $('form-error');
     if (path === '/api/context') {
@@ -61,6 +64,8 @@ async function action(path, values, success) {
       target.hidden = false;
     }
     status(error.message, 'error', error.code === 'STALE_VERSION' || error.code?.startsWith('STORAGE'));
+  } finally {
+    if (comparing) $('compare-button').disabled = !state?.sprint;
   }
 }
 
@@ -148,9 +153,55 @@ function renderSprint() {
   $('sprint-version').textContent = `Context v${sprint.contextVersion} · sprint r${sprint.revision}`;
   box.className = '';
   box.innerHTML = `<div class="sprint-feature"><div><span class="eyebrow">${sprint.selectedInsteadOfTop ? 'YOU CHOSE ANOTHER TOPIC' : 'TOP RECOMMENDATION'}</span><h3>${escapeHtml(sprint.topicName)}</h3><p>${escapeHtml(sprint.method)} · ${state.snapshot.exam.availableMinutes} minutes</p></div><span class="score">#${sprint.topicRank}</span></div>
-    <p class="small-copy">Review evidence: index ${sprint.topicPriority} from confidence ${topic.confidence}/3 and ${topic.importance === 'must know' ? 'must-know factor 2' : 'other-topic factor 1'}. Method source: ${escapeHtml(sprint.methodSource)}.</p>
+    <p class="small-copy">Review evidence: index ${sprint.topicPriority} from confidence ${topic.confidence}/3 and ${topic.importance === 'must know' ? 'must-know factor 2' : 'other-topic factor 1'}. Active method: ${escapeHtml(sprint.method)}. Exam-format default: ${escapeHtml(sprint.defaultMethod)}. Source: ${escapeHtml(sprint.methodSource)}.</p>
     <ol class="steps">${sprint.steps.map(step => `<li><span class="minutes">${step.minutes} min</span><div><strong>${escapeHtml(step.title)}</strong><p>${escapeHtml(step.prompt)}</p></div></li>`).join('')}</ol>
     <p class="small-copy">The sprint is a plan. Log what actually happened below.</p>`;
+}
+
+function renderModel() {
+  const select = $('provider-select');
+  const providers = state.providers || [];
+  if (!providers.some(p => p.id === selectedProvider)) selectedProvider = providers[0]?.id || '';
+  select.innerHTML = providers.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === selectedProvider ? 'selected' : ''}>${escapeHtml(p.name)} · ${escapeHtml(p.model)}</option>`).join('');
+  select.disabled = !providers.length;
+  select.onchange = () => { selectedProvider = select.value; renderModel(); };
+  const provider = providers.find(p => p.id === selectedProvider);
+  $('provider-status').textContent = !provider ? 'No provider is available in this copy.' :
+    provider.configured ? `${provider.name} is configured on this computer.` : `${provider.name} is not configured on this computer. A comparison will show setup guidance without sending data.`;
+  const snapshot = state.snapshot;
+  const topic = snapshot?.topics.find(t => t.id === state.sprint?.topicId);
+  const fields = $('transmit-fields');
+  if (!topic || !provider) {
+    fields.textContent = 'Save or reopen a topic to see what a provider would receive.';
+    $('compare-button').disabled = true;
+    $('suggestion-content').replaceChildren();
+    return;
+  }
+  const sent = [
+    ['Exam format', snapshot.exam.format], ['Selected topic', topic.name],
+    ['Your confidence', String(topic.confidence)], ['Importance', topic.importance],
+    ...(topic.difficultyNote ? [['Your difficulty note', topic.difficultyNote]] : []),
+    ['Days until exam', String(state.daysRemaining)], ['Available minutes', String(snapshot.exam.availableMinutes)],
+  ];
+  fields.innerHTML = `<dl>${sent.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl><p>Your exam name, other topics, session history, and identity are not sent.</p>`;
+  $('compare-button').disabled = false;
+  const box = $('suggestion-content');
+  const suggestion = state.suggestions.find(s => s.provider === selectedProvider);
+  if (!suggestion) { box.innerHTML = '<p class="small-copy">No current comparison for this topic and version.</p>'; return; }
+  if (suggestion.status !== 'valid') {
+    box.innerHTML = `<div class="suggestion-result error"><strong>${escapeHtml(suggestion.status)}</strong><p>${escapeHtml(suggestion.message || 'The provider could not supply a valid choice. Your sprint is unchanged.')}</p></div>`;
+    return;
+  }
+  const probabilityText = suggestion.probabilities ? Object.entries(suggestion.probabilities)
+    .map(([method, chance]) => `${escapeHtml(method)} ${Math.round(chance * 100)}%`).join(' · ') : '';
+  box.innerHTML = `<div class="suggestion-result"><p class="eyebrow">PROVIDER SUGGESTION · ${escapeHtml(suggestion.model || provider.model)}</p><h4>${escapeHtml(suggestion.method)}</h4>
+    <p>For ${escapeHtml(topic.name)} in context v${suggestion.contextVersion}. ${suggestion.rationale ? escapeHtml(suggestion.rationale) : 'Jev provides a typed choice rather than a written rationale.'}</p>
+    ${suggestion.confidence != null ? `<p class="small-copy">Model certainty about this choice: ${Math.round(suggestion.confidence * 100)}%. This is not your mastery or a grade prediction.</p>` : ''}
+    ${probabilityText ? `<p class="small-copy">Choice probabilities: ${probabilityText}.</p>` : ''}
+    <button class="button small primary" id="adopt-button" type="button">Use this method for this sprint</button></div>`;
+  $('adopt-button').addEventListener('click', () => action('/api/adopt',
+    { provider: selectedProvider, suggestionId: suggestion.id, method: suggestion.method },
+    'You chose the provider method for this sprint. The default remains visible.'));
 }
 
 function renderProgress() {
@@ -188,7 +239,7 @@ function renderHistory() {
     ${prior.length ? `<details><summary>Show prior versions (${snapshot.history.length} saved)</summary><ul class="history-list">${prior.map(h => `<li>Context v${h.contextVersion} · ${escapeHtml(h.action)} · ${escapeHtml(shortDate(h.at))}<br><span>${h.topics.map(t => `${escapeHtml(t.name)}: ${t.confidence}/3`).join(' · ')}</span></li>`).join('')}</ul></details>` : '<p class="subtle">No earlier version.</p>'}`;
 }
 
-function render() { renderForm(); renderRank(); renderSprint(); renderProgress(); renderHistory(); $('clear-confirm').hidden = true; $('clear-phrase').value = ''; $('show-clear').disabled = !state.snapshot; }
+function render() { renderForm(); renderRank(); renderSprint(); renderModel(); renderProgress(); renderHistory(); $('clear-confirm').hidden = true; $('clear-phrase').value = ''; $('show-clear').disabled = !state.snapshot; }
 
 $('add-topic').addEventListener('click', () => { if ($('topic-rows').children.length < 6) { $('topic-rows').append(topicRow({}, $('topic-rows').children.length)); renumberTopics(); } });
 $('exam-form').addEventListener('submit', (event) => {
@@ -221,4 +272,9 @@ $('fictional-button').addEventListener('click', () => {
 $('show-clear').addEventListener('click', () => { $('clear-confirm').hidden = false; $('clear-phrase').focus(); });
 $('cancel-clear').addEventListener('click', () => { $('clear-confirm').hidden = true; $('clear-phrase').value = ''; });
 $('confirm-clear').addEventListener('click', () => action('/api/clear', { confirm: $('clear-phrase').value }, 'All Exam Triage app records were cleared and absence was verified.'));
+$('compare-button').addEventListener('click', () => action('/api/compare', { provider: selectedProvider }, (fresh) => {
+  const suggestion = fresh.suggestions.find(s => s.provider === selectedProvider);
+  return suggestion?.status === 'valid' ? 'Provider suggestion saved for this topic and version. Your sprint is unchanged.' :
+    'Comparison status saved. The rule-based sprint remains available.';
+}));
 load();

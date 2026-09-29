@@ -51,7 +51,7 @@
           <section class="card" aria-labelledby="sprint-title">
             <div class="section-head"><div><p class="eyebrow">03 / ONE ACTION</p><h2 id="sprint-title">Your study sprint</h2></div><span id="sprint-version" class="muted"></span></div>
             <div id="sprint-content" class="empty-state">Your timed sprint appears after you save a topic.</div>
-            <div class="model-note"><strong>Compare a model suggestion</strong><p>This optional Group 2 action is not connected yet. No student data is sent to Jev, OpenAI, or Claude in this build.</p><button class="button small" type="button" disabled>Compare methods · not connected</button></div>
+            <div class="model-note" aria-labelledby="model-title"><h3 id="model-title">Compare a model suggestion</h3><p>A provider sees only the fields listed below when you click Compare. Opening, editing, and saving your plan never sends them. Your rule-based sprint stays in place until you explicitly adopt a suggested method.</p><label>Provider<select id="provider-select"></select></label><p id="provider-status" class="small-copy"></p><details id="transmit-details" open><summary>Fields sent on request</summary><div id="transmit-fields" class="transmit-fields"></div></details><button id="compare-button" class="button small ghost" type="button">Compare one suggestion</button><div id="suggestion-content" class="suggestion-content" aria-live="polite"></div></div>
           </section>
         </div>
       </div>

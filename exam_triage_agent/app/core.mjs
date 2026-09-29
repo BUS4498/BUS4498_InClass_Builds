@@ -15,6 +15,7 @@ const methods = {
   'written explanation': 'teach back',
   'mixed/multiple choice': 'active recall',
 };
+export const allowedMethods = Object.freeze(['active recall', 'practice problems', 'teach back']);
 
 const fail = (field, message) => { throw new AppError('INVALID_INPUT', message, field); };
 const text = (value, field, max) => {
@@ -82,7 +83,14 @@ export function validateStored(snapshot) {
       typeof snapshot.topics[i].done !== 'boolean' ||
       (snapshot.topics[i].lastStudiedAt !== null && !Number.isFinite(Date.parse(snapshot.topics[i].lastStudiedAt))))) throw new Error();
     if (snapshot.selectedTopicId !== null && !snapshot.topics.some(t => t.id === snapshot.selectedTopicId && !t.done)) throw new Error();
-    if (JSON.stringify(snapshot.sprint) !== JSON.stringify(composeSprint(snapshot))) throw new Error();
+    if (snapshot.suggestions != null && !Array.isArray(snapshot.suggestions)) throw new Error();
+    if (snapshot.adoption != null && (
+      !allowedMethods.includes(snapshot.adoption.method) ||
+      snapshot.adoption.contextVersion !== snapshot.contextVersion ||
+      snapshot.adoption.topicId !== snapshot.sprint?.topicId)) throw new Error();
+    const expectedSprint = composeSprint(snapshot);
+    if (snapshot.sprint && snapshot.sprint.provider === undefined) delete expectedSprint.provider;
+    if (JSON.stringify(snapshot.sprint) !== JSON.stringify(expectedSprint)) throw new Error();
   } catch {
     throw new AppError('CORRUPT_DATA', 'The saved app data is invalid. Your file was not changed.', null, 500);
   }
@@ -113,15 +121,19 @@ export function composeSprint(snapshot) {
   if (!ranking.length) return null;
   const topic = ranking.find(t => t.id === snapshot.selectedTopicId) || ranking[0];
   const minutes = snapshot.exam.availableMinutes;
+  const adoption = snapshot.adoption?.contextVersion === snapshot.contextVersion &&
+    snapshot.adoption?.topicId === topic.id && allowedMethods.includes(snapshot.adoption?.method) ? snapshot.adoption : null;
+  const activeMethod = adoption?.method || methods[snapshot.exam.format];
   return {
     contextVersion: snapshot.contextVersion, revision: snapshot.sprintRevision,
     topicId: topic.id, topicName: topic.name, topicRank: topic.rank,
     topicPriority: topic.priority, selectedInsteadOfTop: topic.rank !== 1,
-    method: methods[snapshot.exam.format], defaultMethod: methods[snapshot.exam.format],
-    methodSource: 'exam-format default',
+    method: activeMethod, defaultMethod: methods[snapshot.exam.format],
+    methodSource: adoption ? `student-adopted ${adoption.provider} suggestion` : 'exam-format default',
+    provider: adoption?.provider || null,
     steps: [
       { title: 'Set a goal', minutes: 2, prompt: `Choose one thing to understand or practice about ${topic.name}.` },
-      { title: 'Work with your materials', minutes: minutes - 5, prompt: `Use ${methods[snapshot.exam.format]} with your own notes, practice items, or course materials.` },
+      { title: 'Work with your materials', minutes: minutes - 5, prompt: `Use ${activeMethod} with your own notes, practice items, or course materials.` },
       { title: 'Self-check', minutes: 3, prompt: 'Without looking first, check what you can explain or solve; then compare with your course materials.' },
     ],
   };
@@ -137,7 +149,8 @@ export function createOrUpdate(current, draft, at = new Date()) {
   const next = {
     revision: (current?.revision || 0) + 1, contextVersion: (current?.contextVersion || 0) + 1,
     sprintRevision: (current?.sprintRevision || 0) + 1,
-    exam, topics, selectedTopicId: null,
+    exam, topics, selectedTopicId: null, adoption: null,
+    suggestions: current?.suggestions || [],
     sessions: current?.sessions || [], history: historyEntry(current, 'context revised', at.toISOString()),
     updatedAt: at.toISOString(),
   };
@@ -148,7 +161,8 @@ export function createOrUpdate(current, draft, at = new Date()) {
 export function selectTopic(current, topicId, at = new Date()) {
   if (!current.topics.some(t => t.id === topicId && !t.done)) fail('topic', 'Choose a topic still in the study queue.');
   const next = { ...current, revision: current.revision + 1, sprintRevision: current.sprintRevision + 1,
-    selectedTopicId: topicId, history: historyEntry(current, 'sprint topic changed', at.toISOString()), updatedAt: at.toISOString() };
+    selectedTopicId: topicId, adoption: null,
+    history: historyEntry(current, 'sprint topic changed', at.toISOString()), updatedAt: at.toISOString() };
   next.sprint = composeSprint(next);
   return next;
 }
@@ -158,7 +172,7 @@ export function setDone(current, topicId, done, at = new Date()) {
   const topic = current.topics.find(t => t.id === topicId);
   if (!topic) fail('topic', 'Choose a saved topic.');
   const next = { ...current, revision: current.revision + 1, contextVersion: current.contextVersion + 1,
-    sprintRevision: current.sprintRevision + 1, selectedTopicId: null,
+    sprintRevision: current.sprintRevision + 1, selectedTopicId: null, adoption: null,
     topics: current.topics.map(t => t.id === topicId ? { ...t, done } : t),
     history: historyEntry(current, done ? 'topic marked done reviewing' : 'topic reopened', at.toISOString()),
     updatedAt: at.toISOString() };
@@ -174,7 +188,7 @@ export function logSession(current, entry, at = new Date()) {
   if (minutes === 0 && entry.noStudy !== true) fail('no study confirmation', 'Confirm that no study occurred when logging zero minutes.');
   const timestamp = at.toISOString();
   const next = { ...current, revision: current.revision + 1, contextVersion: current.contextVersion + 1,
-    sprintRevision: current.sprintRevision + 1, selectedTopicId: null,
+    sprintRevision: current.sprintRevision + 1, selectedTopicId: null, adoption: null,
     topics: current.topics.map(t => t.id === topic.id ? { ...t, confidence,
       lastStudiedAt: minutes > 0 ? timestamp : t.lastStudiedAt } : t),
     sessions: [{ id: randomUUID(), topicId: topic.id, minutes, confidence, noStudy: minutes === 0,
@@ -186,9 +200,46 @@ export function logSession(current, entry, at = new Date()) {
 }
 
 export function view(snapshot, now = new Date()) {
-  if (!snapshot) return { snapshot: null, ranking: [], top: [], remaining: [], sprint: null, daysRemaining: null };
+  if (!snapshot) return { snapshot: null, ranking: [], top: [], remaining: [], sprint: null, daysRemaining: null, suggestions: [] };
   validateStored(snapshot);
   const ranking = rankTopics(snapshot);
   return { snapshot, ranking, top: ranking.slice(0, 3), remaining: ranking.slice(3),
-    sprint: snapshot.sprint, daysRemaining: daysRemaining(snapshot.exam.date, localDate(now)) };
+    sprint: snapshot.sprint, daysRemaining: daysRemaining(snapshot.exam.date, localDate(now)),
+    suggestions: (snapshot.suggestions || []).filter(s => s.contextVersion === snapshot.contextVersion && s.topicId === snapshot.sprint?.topicId) };
+}
+
+export function recordSuggestion(current, result, at = new Date()) {
+  if (!current.sprint) fail('sprint', 'Reopen a topic before comparing methods.');
+  if (!result || typeof result.provider !== 'string' || !result.provider.trim()) fail('provider', 'Choose a provider.');
+  if (!['valid', 'unavailable', 'failed', 'invalid'].includes(result.status)) fail('provider result', 'Provider status is invalid.');
+  if (result.status === 'valid' && !allowedMethods.includes(result.method)) fail('model method', 'The provider returned an unsupported study method.');
+  const suggestion = {
+    id: randomUUID(), provider: result.provider, model: result.model || null,
+    contextVersion: current.contextVersion, topicId: current.sprint.topicId,
+    status: result.status, method: result.status === 'valid' ? result.method : null,
+    rationale: typeof result.rationale === 'string' ? result.rationale.slice(0, 400) : null,
+    confidence: Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1 ? result.confidence : null,
+    probabilities: result.probabilities || null,
+    message: typeof result.message === 'string' ? result.message.slice(0, 300) : null,
+    at: at.toISOString(),
+  };
+  return { ...current, revision: current.revision + 1,
+    suggestions: [suggestion, ...(current.suggestions || [])].slice(0, 30),
+    history: historyEntry(current, `model comparison ${result.status}`, at.toISOString()),
+    updatedAt: at.toISOString() };
+}
+
+export function adoptSuggestion(current, { provider, suggestionId, method }, at = new Date()) {
+  const suggestion = (current.suggestions || []).find(s => s.id === suggestionId && s.provider === provider);
+  if (!current.sprint || !suggestion || suggestion.status !== 'valid' ||
+      suggestion.contextVersion !== current.contextVersion || suggestion.topicId !== current.sprint.topicId ||
+      suggestion.method !== method || !allowedMethods.includes(method)) {
+    throw new AppError('STALE_SUGGESTION', 'This suggestion does not match the current topic and version. Compare again before adopting a method.', null, 409);
+  }
+  const next = { ...current, revision: current.revision + 1, sprintRevision: current.sprintRevision + 1,
+    adoption: { provider, model: suggestion.model, suggestionId, method,
+      topicId: suggestion.topicId, contextVersion: suggestion.contextVersion },
+    history: historyEntry(current, 'student adopted model method', at.toISOString()), updatedAt: at.toISOString() };
+  next.sprint = composeSprint(next);
+  return next;
 }

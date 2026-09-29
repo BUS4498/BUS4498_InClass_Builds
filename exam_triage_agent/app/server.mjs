@@ -3,7 +3,10 @@ import { readFile, writeFile, rename, unlink, mkdir, stat } from 'node:fs/promis
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { AppError, createOrUpdate, logSession, selectTopic, setDone, validateStored, view } from './core.mjs';
+import { existsSync } from 'node:fs';
+import { loadEnvFile } from 'node:process';
+import { AppError, adoptSuggestion, createOrUpdate, daysRemaining, localDate, logSession, recordSuggestion, selectTopic, setDone, validateStored, view } from './core.mjs';
+import { compactContext, jevProvider, suggestWithJev } from './provider-jev.mjs';
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(appDir, 'public');
@@ -14,9 +17,11 @@ const staticFiles = new Map([
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
 ]);
 
-export function makeServer({ dataDir = defaultDataDir } = {}) {
+export function makeServer({ dataDir = defaultDataDir, providers = [jevProvider], suggestMethod = suggestWithJev } = {}) {
   const file = join(dataDir, 'exam-triage.json');
   let queue = Promise.resolve();
+  const inFlightComparisons = new Map();
+  const publicView = (snapshot) => ({ ...view(snapshot), providers: providers.map(p => ({ id: p.id, name: p.name, model: p.model, configured: p.configured })) });
 
   async function load() {
     try {
@@ -87,7 +92,7 @@ export function makeServer({ dataDir = defaultDataDir } = {}) {
     if (path === '/api/clear') {
       if (input.confirm !== 'CLEAR MY EXAM DATA') throw new AppError('CONFIRM_REQUIRED', 'Type CLEAR MY EXAM DATA to confirm.', 'confirmation');
       await clear();
-      return view(null);
+      return publicView(null);
     }
     if (path !== '/api/context' && !current) throw new AppError('NO_CONTEXT', 'Save an exam first.');
     let next;
@@ -95,15 +100,60 @@ export function makeServer({ dataDir = defaultDataDir } = {}) {
     else if (path === '/api/select') next = selectTopic(current, input.topicId);
     else if (path === '/api/done') next = setDone(current, input.topicId, input.done);
     else if (path === '/api/log') next = logSession(current, input.entry);
+    else if (path === '/api/adopt') next = adoptSuggestion(current, input);
     else throw new AppError('NOT_FOUND', 'This action is not available.', null, 404);
-    return view(await persist(next));
+    return publicView(await persist(next));
+  }
+
+  async function compare(input) {
+    const current = await load();
+    if (!current?.sprint) throw new AppError('NO_SPRINT', 'Save or reopen a topic before comparing methods.');
+    if (!Number.isInteger(input?.expectedRevision) || input.expectedRevision !== current.revision) {
+      throw new AppError('STALE_VERSION', 'This plan changed in another tab. Reload before comparing methods.', null, 409);
+    }
+    const provider = providers.find(p => p.id === input.provider);
+    if (!provider) throw new AppError('INVALID_PROVIDER', 'Choose a listed provider.', 'provider');
+    const cached = (current.suggestions || []).find(s => s.provider === provider.id && s.status === 'valid' &&
+      s.contextVersion === current.contextVersion && s.topicId === current.sprint.topicId);
+    if (cached) return publicView(current);
+    const requestKey = `${current.revision}:${current.contextVersion}:${current.sprint.topicId}:${provider.id}`;
+    if (inFlightComparisons.has(requestKey)) return inFlightComparisons.get(requestKey);
+    const pending = performComparison(current, provider);
+    inFlightComparisons.set(requestKey, pending);
+    try { return await pending; }
+    finally { inFlightComparisons.delete(requestKey); }
+  }
+
+  async function performComparison(current, provider) {
+    const compact = compactContext(current, daysRemaining(current.exam.date, localDate()));
+    const result = await suggestMethod(compact, { provider });
+    const task = queue.then(async () => {
+      const latest = await load();
+      if (!latest || latest.revision !== current.revision || latest.contextVersion !== current.contextVersion ||
+          latest.sprint?.topicId !== current.sprint.topicId) {
+        throw new AppError('STALE_VERSION', 'The plan changed while the provider was responding. Reload; no model result was saved.', null, 409);
+      }
+      const next = recordSuggestion(latest, { ...result, provider: provider.id, model: result.model || provider.model });
+      return publicView(await persist(next));
+    });
+    queue = task.catch(() => {});
+    return task;
   }
 
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
-      if (req.method === 'GET' && url.pathname === '/api/state') return serialize(res, 200, view(await load()));
-      if (req.method === 'POST' && ['/api/context', '/api/select', '/api/done', '/api/log', '/api/clear'].includes(url.pathname)) {
+      if (req.method === 'POST') {
+        const origin = req.headers.origin;
+        const localOrigin = `http://127.0.0.1:${server.address()?.port}`;
+        if (origin && origin !== localOrigin) throw new AppError('FOREIGN_ORIGIN', 'Open this app from its local address before submitting an action.', null, 403);
+        if (!req.headers['content-type']?.toLowerCase().startsWith('application/json')) {
+          throw new AppError('JSON_REQUIRED', 'This action requires the app form.', null, 415);
+        }
+      }
+      if (req.method === 'GET' && url.pathname === '/api/state') return serialize(res, 200, publicView(await load()));
+      if (req.method === 'POST' && url.pathname === '/api/compare') return serialize(res, 200, await compare(await bodyOf(req)));
+      if (req.method === 'POST' && ['/api/context', '/api/select', '/api/done', '/api/log', '/api/clear', '/api/adopt'].includes(url.pathname)) {
         const input = await bodyOf(req);
         const task = queue.then(() => mutate(url.pathname, input));
         queue = task.catch(() => {});
@@ -127,6 +177,8 @@ export function makeServer({ dataDir = defaultDataDir } = {}) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const envFile = join(appDir, '..', '.env');
+  if (existsSync(envFile)) loadEnvFile(envFile);
   const port = Number(process.env.PORT || 4173);
   makeServer().listen(port, '127.0.0.1', () => {
     process.stdout.write(`Exam Triage Agent: http://127.0.0.1:${port}\nPress Ctrl+C to stop.\n`);
