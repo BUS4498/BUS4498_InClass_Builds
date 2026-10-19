@@ -319,13 +319,21 @@
     submitEvent.preventDefault();
     signInButton.disabled = true;
     signInMessage.textContent = "Signing in…";
-    const { error } = await db.auth.signInWithPassword({
-      email: emailInput.value.trim(),
-      password: passwordInput.value,
-    });
+    let message = "";
+    try {
+      const { error } = await db.auth.signInWithPassword({
+        email: emailInput.value.trim(),
+        password: passwordInput.value,
+      });
+      // Show Supabase's own reason, such as "Invalid login credentials", so problems are easy to spot.
+      if (error) message = "Sign-in didn't work: " + error.message;
+    } catch (error) {
+      console.error(error);
+      message = "Supabase couldn't be reached. Check your internet connection and try again.";
+    }
     passwordInput.value = "";
     signInButton.disabled = false;
-    signInMessage.textContent = error ? "That email and password didn't work." : "";
+    signInMessage.textContent = message;
   });
 
   signOutButton.addEventListener("click", async () => {
