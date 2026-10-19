@@ -1,5 +1,6 @@
 // Club Event Radar: the website's code.
 // It reads published events with the publishable key and sends new posts to the AI agent.
+// A signed-in moderator can also see waiting posts and approve or reject them.
 // All text from posts is shown with textContent, never innerHTML.
 
 (function () {
@@ -24,16 +25,26 @@
   const resultTitle = document.getElementById("result-title");
   const resultMessage = document.getElementById("result-message");
   const resultReasons = document.getElementById("result-reasons");
+  const signInForm = document.getElementById("sign-in-form");
+  const emailInput = document.getElementById("mod-email");
+  const passwordInput = document.getElementById("mod-password");
+  const signInButton = document.getElementById("sign-in-button");
+  const signInMessage = document.getElementById("sign-in-message");
+  const modArea = document.getElementById("mod-area");
+  const modWho = document.getElementById("mod-who");
+  const signOutButton = document.getElementById("sign-out-button");
+  const waitingList = document.getElementById("waiting");
+  const waitingStatus = document.getElementById("waiting-status");
 
   if (!config.supabaseUrl || !config.publishableKey || !window.supabase) {
     eventsStatus.textContent = "The website isn't set up yet: check config.js and your internet connection.";
     submitButton.disabled = true;
+    signInButton.disabled = true;
     return;
   }
 
-  const db = window.supabase.createClient(config.supabaseUrl, config.publishableKey, {
-    auth: { persistSession: false },
-  });
+  // The moderator's sign-in is remembered in this browser until they sign out.
+  const db = window.supabase.createClient(config.supabaseUrl, config.publishableKey);
 
   // ---------- Showing events ----------
 
@@ -206,6 +217,119 @@
       submitButton.disabled = false;
       submitButton.textContent = "Send to the agent";
     }
+  });
+
+  // ---------- Moderator sign-in ----------
+
+  let moderatorEmail = "";
+
+  function waitingCard(post) {
+    const card = eventCard(post);
+    card.classList.add("waiting-card");
+
+    const details = document.createElement("div");
+    details.className = "review-details";
+    addText(details, "p", "label", "Why it's waiting");
+    addText(details, "p", "", post.status_reason || "No reason was given.");
+    if (post.note_for_moderator) {
+      addText(details, "p", "label", "Note for the moderator");
+      addText(details, "p", "", post.note_for_moderator);
+    }
+    addText(details, "p", "label", "Original post");
+    addText(details, "blockquote", "original", post.announcement);
+    card.appendChild(details);
+
+    const buttons = document.createElement("div");
+    buttons.className = "review-buttons";
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.textContent = "Approve";
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "danger";
+    reject.textContent = "Reject";
+    approve.addEventListener("click", () => review(post, "published", [approve, reject]));
+    reject.addEventListener("click", () => review(post, "rejected", [approve, reject]));
+    buttons.append(approve, reject);
+    card.appendChild(buttons);
+
+    return card;
+  }
+
+  async function loadWaiting() {
+    const { data, error } = await db
+      .from("events")
+      .select("*")
+      .eq("status", "waiting")
+      .order("created_at", { ascending: true });
+
+    waitingList.replaceChildren();
+    if (error) {
+      console.error(error);
+      waitingStatus.textContent = "The waiting posts couldn't be loaded. Please refresh the page.";
+      return;
+    }
+    if (data.length === 0) {
+      waitingStatus.textContent = "No posts are waiting. Nice work.";
+      return;
+    }
+    waitingStatus.textContent = data.length === 1 ? "1 post is waiting." : data.length + " posts are waiting.";
+    data.forEach((post) => waitingList.appendChild(waitingCard(post)));
+  }
+
+  async function review(post, newStatus, buttons) {
+    buttons.forEach((button) => { button.disabled = true; });
+    const { data, error } = await db
+      .from("events")
+      .update({ status: newStatus, reviewed_at: new Date().toISOString(), reviewed_by: moderatorEmail })
+      .eq("id", post.id)
+      .select("id");
+
+    if (error || data.length === 0) {
+      console.error(error);
+      waitingStatus.textContent = "That change couldn't be saved. Please sign in again and retry.";
+      buttons.forEach((button) => { button.disabled = false; });
+      return;
+    }
+    loadWaiting();
+    loadEvents();
+  }
+
+  function showModerator(session) {
+    const signedIn = Boolean(session);
+    moderatorEmail = signedIn ? session.user.email || "" : "";
+    signInForm.hidden = signedIn;
+    modArea.hidden = !signedIn;
+    if (signedIn) {
+      modWho.textContent = "Signed in as " + moderatorEmail;
+      loadWaiting();
+    } else {
+      waitingList.replaceChildren();
+      waitingStatus.textContent = "";
+    }
+  }
+
+  // Runs on page load and whenever someone signs in or out.
+  // The work is deferred so it doesn't run inside the sign-in library's own callback.
+  db.auth.onAuthStateChange((_event, session) => {
+    setTimeout(() => showModerator(session), 0);
+  });
+
+  signInForm.addEventListener("submit", async (submitEvent) => {
+    submitEvent.preventDefault();
+    signInButton.disabled = true;
+    signInMessage.textContent = "Signing in…";
+    const { error } = await db.auth.signInWithPassword({
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+    });
+    passwordInput.value = "";
+    signInButton.disabled = false;
+    signInMessage.textContent = error ? "That email and password didn't work." : "";
+  });
+
+  signOutButton.addEventListener("click", async () => {
+    await db.auth.signOut();
   });
 
   loadEvents();

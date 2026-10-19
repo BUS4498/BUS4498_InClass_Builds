@@ -44,6 +44,31 @@
         <ul id="result-reasons"></ul>
       </div>
     </section>
+
+    <section class="mod-panel" aria-labelledby="mod-heading">
+      <h2 id="mod-heading">Moderator sign-in</h2>
+
+      <form id="sign-in-form">
+        <label for="mod-email">Email</label>
+        <input id="mod-email" type="email" autocomplete="username" required>
+        <label for="mod-password">Password</label>
+        <input id="mod-password" type="password" autocomplete="current-password" required>
+        <div class="form-row">
+          <span id="sign-in-message" class="muted" role="status"></span>
+          <button id="sign-in-button" type="submit">Sign in</button>
+        </div>
+      </form>
+
+      <div id="mod-area" hidden>
+        <div class="form-row">
+          <span id="mod-who" class="muted"></span>
+          <button id="sign-out-button" type="button" class="secondary">Sign out</button>
+        </div>
+        <h3>Waiting posts</h3>
+        <p id="waiting-status" class="muted" role="status"></p>
+        <ul id="waiting" class="event-list"></ul>
+      </div>
+    </section>
   </main>
 
   <footer class="wrap muted small">
