@@ -1,344 +1,210 @@
-// Club Event Radar: the website's code.
-// It reads published events with the publishable key and sends new posts to the AI agent.
-// A signed-in moderator can also see waiting posts and approve or reject them.
-// All text from posts is shown with textContent, never innerHTML.
-
+// Club Event Radar: the website. It runs in each visitor's browser (GitHub Pages only serves it).
+// It reads published events from the database and sends new posts to the AI agent.
+// It knows only the project address and the publishable key, so it can do only what the security rules allow.
 (function () {
-  const config = window.EVENT_RADAR_CONFIG || {};
-  const AGENT_URL = config.supabaseUrl + "/functions/v1/submit-event";
-  // Only the columns the website is allowed to read (see the Stage 4 grants).
-  const PUBLIC_COLUMNS =
-    "id, created_at, status, title, club, event_date, start_time, end_time, place_name, place_detail, cost, free_food, summary, flyer_url";
-  // Flyer photos are shown only when they come from this project's flyers bucket.
-  const FLYER_PREFIX = config.supabaseUrl + "/storage/v1/object/public/flyers/";
-  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-  const PHOTO_TYPES = ["image/jpeg", "image/png"];
+  "use strict";
+  var cfg = window.EVENT_RADAR_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
 
-  const eventsList = document.getElementById("events");
-  const eventsStatus = document.getElementById("events-status");
-  const form = document.getElementById("post-form");
-  const textarea = document.getElementById("announcement");
-  const flyerInput = document.getElementById("flyer");
-  const charCount = document.getElementById("char-count");
-  const submitButton = document.getElementById("submit-button");
-  const result = document.getElementById("result");
-  const resultTitle = document.getElementById("result-title");
-  const resultMessage = document.getElementById("result-message");
-  const resultReasons = document.getElementById("result-reasons");
-  const signInForm = document.getElementById("sign-in-form");
-  const emailInput = document.getElementById("mod-email");
-  const passwordInput = document.getElementById("mod-password");
-  const signInButton = document.getElementById("sign-in-button");
-  const signInMessage = document.getElementById("sign-in-message");
-  const modArea = document.getElementById("mod-area");
-  const modWho = document.getElementById("mod-who");
-  const signOutButton = document.getElementById("sign-out-button");
-  const waitingList = document.getElementById("waiting");
-  const waitingStatus = document.getElementById("waiting-status");
-
-  if (!config.supabaseUrl || !config.publishableKey || !window.supabase) {
-    eventsStatus.textContent = "The website isn't set up yet: check config.js and your internet connection.";
-    submitButton.disabled = true;
-    signInButton.disabled = true;
+  if (!cfg.supabaseUrl || /YOUR-PROJECT-REF/.test(cfg.supabaseUrl) || !cfg.publishableKey || /YOUR-KEY/.test(cfg.publishableKey)) {
+    $("boardStatus").textContent = "Add your Project URL and publishable key to config.js first.";
+    return;
+  }
+  if (/^sb_secret_/.test(cfg.publishableKey)) {
+    $("boardStatus").textContent = "Stop: config.js holds the secret key. Replace it with the publishable key, then create a new secret key in Supabase.";
     return;
   }
 
-  // The moderator's sign-in is remembered in this browser until they sign out.
-  const db = window.supabase.createClient(config.supabaseUrl, config.publishableKey);
+  var baseUrl = cfg.supabaseUrl.replace(/\/+$/, "");
+  var db = window.supabase.createClient(baseUrl, cfg.publishableKey);
+  var AGENT_URL = baseUrl + "/functions/v1/submit-event";
+  // The website may read only these columns (the menu), never the raw announcement or moderator notes.
+  var PUBLIC_COLUMNS = [
+    "id", "title", "club", "event_date", "start_time", "end_time", "place_name", "place_detail", "cost", "free_food", "summary",
+    "flyer_url",
+  ].join(",");
 
-  // ---------- Showing events ----------
-
-  // Today's date in Pacific time, as YYYY-MM-DD.
-  function pacificToday() {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date());
+  /* ---------- small helpers ---------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text; // always textContent: posts are typed by strangers
+    return e;
+  }
+  function fmtDate(d) {
+    if (!d) return "Date to be announced";
+    var p = d.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+  function fmtTime(t) {
+    if (!t) return "";
+    var p = t.split(":"), h = +p[0], ap = h >= 12 ? "PM" : "AM";
+    return (h % 12 || 12) + ":" + p[1] + " " + ap;
   }
 
-  function formatDate(value) {
-    if (!value) return "";
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
-      weekday: "long", month: "long", day: "numeric",
-    });
+  /* ---------- one event card: date badge, details, and (from Stage 7) the flyer ---------- */
+  function dateBadge(d) {
+    var box = el("div", "date");
+    if (!d) { box.className = "date tba"; box.appendChild(el("span", "day", "TBA")); return box; }
+    var p = d.split("-"), day = new Date(+p[0], +p[1] - 1, +p[2]);
+    box.appendChild(el("span", "mon", day.toLocaleDateString("en-US", { month: "short" })));
+    box.appendChild(el("span", "day", String(day.getDate())));
+    return box;
   }
-
-  function formatTime(value) {
-    if (!value) return "";
-    const [hours, minutes] = value.split(":").map(Number);
-    const suffix = hours >= 12 ? "PM" : "AM";
-    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-    return hour12 + ":" + String(minutes).padStart(2, "0") + " " + suffix;
-  }
-
-  function addText(parent, tag, className, text) {
-    if (!text) return null;
-    const element = document.createElement(tag);
-    if (className) element.className = className;
-    element.textContent = text;
-    parent.appendChild(element);
-    return element;
-  }
-
-  function eventCard(event) {
-    const card = document.createElement("li");
-    card.className = "event-card";
-
-    if (typeof event.flyer_url === "string" && event.flyer_url.startsWith(FLYER_PREFIX)) {
-      const link = document.createElement("a");
-      link.className = "flyer";
-      link.href = event.flyer_url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      const image = document.createElement("img");
-      image.src = event.flyer_url;
-      image.alt = "Flyer for " + (event.title || "this event");
-      image.loading = "lazy";
-      link.appendChild(image);
-      card.appendChild(link);
+  function card(ev, extra) {
+    var li = el("li", "event");
+    li.appendChild(dateBadge(ev.event_date));
+    var body = el("div", "event-body");
+    var time = ev.start_time ? " · " + fmtTime(ev.start_time) + (ev.end_time ? " to " + fmtTime(ev.end_time) : "") : "";
+    body.appendChild(el("p", "when", fmtDate(ev.event_date) + time));
+    body.appendChild(el("h3", null, ev.title || "Untitled event"));
+    var where = [ev.place_name, ev.place_detail].filter(Boolean).join(", ");
+    var meta = [ev.club, where].filter(Boolean).join(" · ");
+    if (meta) body.appendChild(el("p", "meta", meta));
+    if (ev.summary) body.appendChild(el("p", "summary", ev.summary));
+    var tags = el("p", "tags");
+    if (ev.cost) tags.appendChild(el("span", "tag", ev.cost));
+    if (ev.free_food) tags.appendChild(el("span", "tag food", "🍕 Free food"));
+    if (tags.childNodes.length) body.appendChild(tags);
+    if (extra) body.appendChild(extra);
+    li.appendChild(body);
+    if (ev.flyer_url && ev.flyer_url.indexOf(baseUrl + "/storage/v1/object/public/flyers/") === 0) {
+      var img = el("img", "flyer");
+      img.src = ev.flyer_url;
+      img.alt = "Flyer for " + (ev.title || "this event");
+      img.loading = "lazy";
+      li.appendChild(img);
     }
-
-    addText(card, "h3", "", event.title || "Untitled event");
-    addText(card, "p", "club", event.club);
-
-    let when = formatDate(event.event_date);
-    if (event.start_time) when += ", " + formatTime(event.start_time);
-    if (event.end_time) when += " to " + formatTime(event.end_time);
-    addText(card, "p", "when", when);
-
-    const where = [event.place_name, event.place_detail].filter(Boolean).join(", ");
-    addText(card, "p", "where", where);
-
-    addText(card, "p", "summary", event.summary);
-
-    const tags = document.createElement("div");
-    tags.className = "tags";
-    addText(tags, "span", "tag", event.cost);
-    if (event.free_food) addText(tags, "span", "tag", "Free food");
-    if (tags.children.length > 0) card.appendChild(tags);
-
-    return card;
+    return li;
   }
 
-  async function loadEvents() {
-    const { data, error } = await db
-      .from("events")
-      .select(PUBLIC_COLUMNS)
-      .eq("status", "published")
-      .gte("event_date", pacificToday())
-      .order("event_date", { ascending: true })
-      .order("start_time", { ascending: true });
-
-    eventsList.replaceChildren();
-    if (error) {
-      console.error(error);
-      eventsStatus.textContent = "The events couldn't be loaded right now. Please refresh the page.";
-      return;
-    }
-    if (data.length === 0) {
-      eventsStatus.textContent = "No upcoming events yet. Be the first to post one below.";
-      return;
-    }
-    eventsStatus.textContent = data.length === 1 ? "1 upcoming event" : data.length + " upcoming events";
-    data.forEach((event) => eventsList.appendChild(eventCard(event)));
-  }
-
-  // ---------- Sending a post to the agent ----------
-
-  const ANSWERS = {
-    published: { title: "Published", tone: "good" },
-    waiting: { title: "Waiting for a moderator", tone: "wait" },
-    rejected: { title: "Not posted", tone: "bad" },
-    duplicate: { title: "Already posted", tone: "wait" },
-  };
-
-  function showResult(title, tone, message, reasons) {
-    result.hidden = false;
-    result.className = "result " + tone;
-    resultTitle.textContent = title;
-    resultMessage.textContent = message || "";
-    resultReasons.replaceChildren();
-    (reasons || []).forEach((reason) => addText(resultReasons, "li", "", reason));
-  }
-
-  textarea.addEventListener("input", () => {
-    charCount.textContent = textarea.value.length + " / 2000";
-  });
-
-  form.addEventListener("submit", async (submitEvent) => {
-    submitEvent.preventDefault();
-    const announcement = textarea.value.trim();
-    if (!announcement) {
-      showResult("Nothing to send", "bad", "Please paste an announcement first.", []);
-      return;
-    }
-    const flyer = flyerInput.files[0];
-    if (flyer && !PHOTO_TYPES.includes(flyer.type)) {
-      showResult("Photo not sent", "bad", "The photo must be a JPG or PNG.", []);
-      return;
-    }
-    if (flyer && flyer.size > MAX_PHOTO_BYTES) {
-      showResult("Photo not sent", "bad", "The photo is too big. Please use one under 5 MB.", []);
-      return;
-    }
-
-    submitButton.disabled = true;
-    submitButton.textContent = "The agent is reading your post…";
-    result.hidden = true;
-
-    try {
-      const body = new FormData();
-      body.append("announcement", announcement);
-      if (flyer) body.append("flyer", flyer);
-      const response = await fetch(AGENT_URL, {
-        method: "POST",
-        headers: { apikey: config.publishableKey },
-        body,
+  /* ---------- the event list: published events only ---------- */
+  function loadBoard() {
+    $("boardStatus").textContent = "Loading…";
+    db.from("events").select(PUBLIC_COLUMNS).eq("status", "published")
+      .order("event_date", { ascending: true, nullsFirst: false })
+      .order("start_time", { ascending: true, nullsFirst: false })
+      .then(function (res) {
+        var list = $("board");
+        list.textContent = "";
+        if (res.error) { $("boardStatus").textContent = "Couldn't load events: " + res.error.message; return; }
+        res.data.forEach(function (ev) { list.appendChild(card(ev)); });
+        if (!res.data.length) list.appendChild(el("li", "empty", "No events yet. Post the first one!"));
+        $("boardStatus").textContent = res.data.length ? res.data.length + (res.data.length === 1 ? " event" : " events") : "";
       });
-      const answer = await response.json();
+  }
 
-      if (!answer.ok) {
-        showResult("Something went wrong", "bad", answer.message || "Please try again.", []);
-      } else {
-        const shown = ANSWERS[answer.status] || { title: answer.status, tone: "wait" };
-        const reasons = answer.status === "published" ? [] : answer.reasons;
-        showResult(shown.title, shown.tone, answer.message, reasons);
-        if (answer.status === "published" || answer.status === "waiting") {
-          textarea.value = "";
-          flyerInput.value = "";
-          charCount.textContent = "0 / 2000";
-        }
-        if (answer.status === "published") loadEvents();
-      }
-    } catch (error) {
-      console.error(error);
-      showResult("Something went wrong", "bad", "The agent couldn't be reached. Check your internet connection and try again.", []);
-    } finally {
-      submitButton.disabled = false;
-      submitButton.textContent = "Send to the agent";
+  /* ---------- posting: send it to the AI agent ---------- */
+  var LABELS = { published: "Published", waiting: "Waiting for a moderator", rejected: "Not posted", duplicate: "Already posted", error: "Something went wrong" };
+  function showResult(data) {
+    var box = $("postResult"), kind = data.ok ? data.status : "error";
+    box.hidden = false;
+    box.className = "result " + kind;
+    box.textContent = "";
+    box.appendChild(el("p", "result-label", LABELS[kind] || kind));
+    box.appendChild(el("p", null, data.message || ""));
+    if (data.reasons && data.reasons.length) {
+      var ul = el("ul", "reasons");
+      data.reasons.forEach(function (r) { ul.appendChild(el("li", null, r)); });
+      box.appendChild(ul);
     }
+    if (data.event && data.status !== "rejected") {
+      var preview = el("ul", "board preview");
+      preview.appendChild(card(data.event));
+      box.appendChild(preview);
+    }
+  }
+
+  $("postForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var form = $("postForm"), btn = $("postBtn");
+    var photo = $("flyer").files[0];
+    if (photo && photo.size > 5 * 1024 * 1024) { showResult({ ok: false, message: "The photo must be 5 MB or smaller." }); return; }
+    btn.disabled = true;
+    btn.textContent = "The agent is reading it…";
+    // The publishable key goes on the apikey header only (never as an Authorization bearer token).
+    fetch(AGENT_URL, { method: "POST", headers: { apikey: cfg.publishableKey }, body: new FormData(form) })
+      .then(function (r) {
+        return r.json().catch(function () { return { ok: false, message: "The agent didn't answer (" + r.status + "). Is the function deployed?" }; });
+      })
+      .then(function (data) {
+        showResult(data);
+        if (data.ok) { form.reset(); loadBoard(); }
+      })
+      .catch(function () { showResult({ ok: false, message: "Couldn't reach the agent. Check your internet connection and the Project URL in config.js." }); })
+      .then(function () { btn.disabled = false; btn.textContent = "Post it"; });
   });
+  $("refreshBtn").addEventListener("click", loadBoard);
 
-  // ---------- Moderator sign-in ----------
+  // Say who drafts the cards (a quick check that doesn't call the AI).
+  fetch(AGENT_URL, { headers: { apikey: cfg.publishableKey } })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.ai) $("aiNote").textContent = "Event cards are drafted by an AI agent, " + d.ai + ", and checked against the posting rules."; })
+    .catch(function () { /* the website still works without this note */ });
 
-  let moderatorEmail = "";
-
-  function waitingCard(post) {
-    const card = eventCard(post);
-    card.classList.add("waiting-card");
-
-    const details = document.createElement("div");
-    details.className = "review-details";
-    addText(details, "p", "label", "Why it's waiting");
-    addText(details, "p", "", post.status_reason || "No reason was given.");
-    if (post.note_for_moderator) {
-      addText(details, "p", "label", "Note for the moderator");
-      addText(details, "p", "", post.note_for_moderator);
-    }
-    addText(details, "p", "label", "Original post");
-    addText(details, "blockquote", "original", post.announcement);
-    card.appendChild(details);
-
-    const buttons = document.createElement("div");
-    buttons.className = "review-buttons";
-    const approve = document.createElement("button");
-    approve.type = "button";
-    approve.textContent = "Approve";
-    const reject = document.createElement("button");
-    reject.type = "button";
-    reject.className = "danger";
-    reject.textContent = "Reject";
-    approve.addEventListener("click", () => review(post, "published", [approve, reject]));
-    reject.addEventListener("click", () => review(post, "rejected", [approve, reject]));
-    buttons.append(approve, reject);
-    card.appendChild(buttons);
-
-    return card;
-  }
-
-  async function loadWaiting() {
-    const { data, error } = await db
-      .from("events")
-      .select("*")
-      .eq("status", "waiting")
-      .order("created_at", { ascending: true });
-
-    waitingList.replaceChildren();
-    if (error) {
-      console.error(error);
-      waitingStatus.textContent = "The waiting posts couldn't be loaded. Please refresh the page.";
-      return;
-    }
-    if (data.length === 0) {
-      waitingStatus.textContent = "No posts are waiting. Nice work.";
-      return;
-    }
-    waitingStatus.textContent = data.length === 1 ? "1 post is waiting." : data.length + " posts are waiting.";
-    data.forEach((post) => waitingList.appendChild(waitingCard(post)));
-  }
-
-  async function review(post, newStatus, buttons) {
-    buttons.forEach((button) => { button.disabled = true; });
-    const { data, error } = await db
-      .from("events")
-      .update({ status: newStatus, reviewed_at: new Date().toISOString(), reviewed_by: moderatorEmail })
-      .eq("id", post.id)
-      .select("id");
-
-    if (error || data.length === 0) {
-      console.error(error);
-      waitingStatus.textContent = "That change couldn't be saved. Please sign in again and retry.";
-      buttons.forEach((button) => { button.disabled = false; });
-      return;
-    }
-    loadWaiting();
-    loadEvents();
-  }
-
-  function showModerator(session) {
-    const signedIn = Boolean(session);
-    moderatorEmail = signedIn ? session.user.email || "" : "";
-    signInForm.hidden = signedIn;
-    modArea.hidden = !signedIn;
-    if (signedIn) {
-      modWho.textContent = "Signed in as " + moderatorEmail;
+  /* ---------- moderator sign-in ---------- */
+  var session = null;
+  function renderMod() {
+    $("signInForm").hidden = Boolean(session);
+    $("modArea").hidden = !session;
+    if (session) {
+      $("modWho").textContent = session.user.email;
       loadWaiting();
-    } else {
-      waitingList.replaceChildren();
-      waitingStatus.textContent = "";
     }
   }
-
-  // Runs on page load and whenever someone signs in or out.
-  // The work is deferred so it doesn't run inside the sign-in library's own callback.
-  db.auth.onAuthStateChange((_event, session) => {
-    setTimeout(() => showModerator(session), 0);
-  });
-
-  signInForm.addEventListener("submit", async (submitEvent) => {
-    submitEvent.preventDefault();
-    signInButton.disabled = true;
-    signInMessage.textContent = "Signing in…";
-    let message = "";
-    try {
-      const { error } = await db.auth.signInWithPassword({
-        email: emailInput.value.trim(),
-        password: passwordInput.value,
+  function review(ev, status) {
+    db.from("events")
+      .update({ status: status, reviewed_at: new Date().toISOString(), reviewed_by: session.user.email })
+      .eq("id", ev.id)
+      .then(function (res) {
+        if (res.error) { $("waitingStatus").textContent = "Couldn't save that: " + res.error.message; return; }
+        loadWaiting();
+        loadBoard();
       });
-      // Show Supabase's own reason, such as "Invalid login credentials", so problems are easy to spot.
-      if (error) message = "Sign-in didn't work: " + error.message;
-    } catch (error) {
-      console.error(error);
-      message = "Supabase couldn't be reached. Check your internet connection and try again.";
-    }
-    passwordInput.value = "";
-    signInButton.disabled = false;
-    signInMessage.textContent = message;
+  }
+  function loadWaiting() {
+    $("waitingStatus").textContent = "Loading…";
+    db.from("events").select("*").eq("status", "waiting").order("created_at", { ascending: true })
+      .then(function (res) {
+        var list = $("waitingList");
+        list.textContent = "";
+        if (res.error) { $("waitingStatus").textContent = "Couldn't load waiting posts: " + res.error.message; return; }
+        res.data.forEach(function (ev) {
+          var box = el("div", "review");
+          if (ev.status_reason) box.appendChild(el("p", "why", "Why it's waiting: " + ev.status_reason));
+          box.appendChild(el("p", "original", "Original post: " + ev.announcement));
+          var approve = el("button", null, "Approve");
+          var reject = el("button", "ghost", "Reject");
+          approve.type = reject.type = "button";
+          approve.addEventListener("click", function () { review(ev, "published"); });
+          reject.addEventListener("click", function () { review(ev, "rejected"); });
+          var row = el("p", "actions");
+          row.appendChild(approve);
+          row.appendChild(reject);
+          box.appendChild(row);
+          list.appendChild(card(ev, box));
+        });
+        $("waitingStatus").textContent = res.data.length ? res.data.length + " waiting" : "Nothing is waiting. Nice work.";
+      });
+  }
+  $("signInForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    $("signInMsg").textContent = "Signing in…";
+    db.auth.signInWithPassword({ email: $("modEmail").value.trim(), password: $("modPassword").value })
+      .then(function (res) {
+        $("modPassword").value = "";
+        // Show Supabase's own reason, such as "Invalid login credentials", so problems are easy to spot.
+        $("signInMsg").textContent = res.error ? "Sign-in didn't work: " + res.error.message : "";
+      })
+      .catch(function () { $("signInMsg").textContent = "Supabase couldn't be reached. Check your internet connection and try again."; });
+  });
+  $("signOutBtn").addEventListener("click", function () { db.auth.signOut(); });
+  db.auth.onAuthStateChange(function (_event, s) { session = s; renderMod(); });
+  db.auth.getSession().then(function (res) {
+    session = res.data.session;
+    if (session) $("modBox").open = true;
+    renderMod();
   });
 
-  signOutButton.addEventListener("click", async () => {
-    await db.auth.signOut();
-  });
-
-  loadEvents();
+  loadBoard();
 })();
