@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Club Event Radar</title>
+  <meta name="description" content="Upcoming campus club events. Club officers can post an announcement.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>Club Event Radar</h1>
+      <p class="tagline">Upcoming campus club events, checked against the posting rules.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="events-heading">
+      <h2 id="events-heading">Upcoming events</h2>
+      <p id="events-status" class="muted" role="status">Loading events…</p>
+      <ul id="events" class="event-list"></ul>
+    </section>
+
+    <section class="post-panel" aria-labelledby="post-heading">
+      <h2 id="post-heading">Post an event</h2>
+      <p class="muted">Paste your club's announcement. The AI agent turns it into an event card and checks the posting rules. Clean posts go up right away; anything else waits for a moderator.</p>
+
+      <form id="post-form">
+        <label for="announcement">Announcement</label>
+        <textarea id="announcement" name="announcement" rows="6" maxlength="2000" required
+          placeholder="Board Game Guild: Game Night! Thursday, October 22, 7 to 10 pm in the University Union, Room 220…"></textarea>
+        <div class="form-row">
+          <span id="char-count" class="muted">0 / 2000</span>
+          <button id="submit-button" type="submit">Send to the agent</button>
+        </div>
+      </form>
+
+      <div id="result" class="result" role="status" aria-live="polite" hidden>
+        <p id="result-title" class="result-title"></p>
+        <p id="result-message"></p>
+        <ul id="result-reasons"></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap muted small">
+    A BUS 4498 practice build. Every club and event in the sample posts is made up.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
