@@ -7,12 +7,17 @@
   const AGENT_URL = config.supabaseUrl + "/functions/v1/submit-event";
   // Only the columns the website is allowed to read (see the Stage 4 grants).
   const PUBLIC_COLUMNS =
-    "id, created_at, status, title, club, event_date, start_time, end_time, place_name, place_detail, cost, free_food, summary";
+    "id, created_at, status, title, club, event_date, start_time, end_time, place_name, place_detail, cost, free_food, summary, flyer_url";
+  // Flyer photos are shown only when they come from this project's flyers bucket.
+  const FLYER_PREFIX = config.supabaseUrl + "/storage/v1/object/public/flyers/";
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+  const PHOTO_TYPES = ["image/jpeg", "image/png"];
 
   const eventsList = document.getElementById("events");
   const eventsStatus = document.getElementById("events-status");
   const form = document.getElementById("post-form");
   const textarea = document.getElementById("announcement");
+  const flyerInput = document.getElementById("flyer");
   const charCount = document.getElementById("char-count");
   const submitButton = document.getElementById("submit-button");
   const result = document.getElementById("result");
@@ -67,6 +72,20 @@
   function eventCard(event) {
     const card = document.createElement("li");
     card.className = "event-card";
+
+    if (typeof event.flyer_url === "string" && event.flyer_url.startsWith(FLYER_PREFIX)) {
+      const link = document.createElement("a");
+      link.className = "flyer";
+      link.href = event.flyer_url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      const image = document.createElement("img");
+      image.src = event.flyer_url;
+      image.alt = "Flyer for " + (event.title || "this event");
+      image.loading = "lazy";
+      link.appendChild(image);
+      card.appendChild(link);
+    }
 
     addText(card, "h3", "", event.title || "Untitled event");
     addText(card, "p", "club", event.club);
@@ -142,6 +161,15 @@
       showResult("Nothing to send", "bad", "Please paste an announcement first.", []);
       return;
     }
+    const flyer = flyerInput.files[0];
+    if (flyer && !PHOTO_TYPES.includes(flyer.type)) {
+      showResult("Photo not sent", "bad", "The photo must be a JPG or PNG.", []);
+      return;
+    }
+    if (flyer && flyer.size > MAX_PHOTO_BYTES) {
+      showResult("Photo not sent", "bad", "The photo is too big. Please use one under 5 MB.", []);
+      return;
+    }
 
     submitButton.disabled = true;
     submitButton.textContent = "The agent is reading your post…";
@@ -150,6 +178,7 @@
     try {
       const body = new FormData();
       body.append("announcement", announcement);
+      if (flyer) body.append("flyer", flyer);
       const response = await fetch(AGENT_URL, {
         method: "POST",
         headers: { apikey: config.publishableKey },
@@ -163,11 +192,12 @@
         const shown = ANSWERS[answer.status] || { title: answer.status, tone: "wait" };
         const reasons = answer.status === "published" ? [] : answer.reasons;
         showResult(shown.title, shown.tone, answer.message, reasons);
-        if (answer.status === "published") {
+        if (answer.status === "published" || answer.status === "waiting") {
           textarea.value = "";
+          flyerInput.value = "";
           charCount.textContent = "0 / 2000";
-          loadEvents();
         }
+        if (answer.status === "published") loadEvents();
       }
     } catch (error) {
       console.error(error);

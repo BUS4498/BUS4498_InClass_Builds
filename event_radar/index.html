@@ -24,12 +24,14 @@
 
     <section class="post-panel" aria-labelledby="post-heading">
       <h2 id="post-heading">Post an event</h2>
-      <p class="muted">Paste your club's announcement. The AI agent turns it into an event card and checks the posting rules. Clean posts go up right away; anything else waits for a moderator.</p>
+      <p class="muted">Paste your club's announcement and, if you like, add a flyer photo. The AI agent turns it into an event card and checks the posting rules. Clean posts go up right away; anything else, including every post with a photo, waits for a moderator.</p>
 
       <form id="post-form">
         <label for="announcement">Announcement</label>
         <textarea id="announcement" name="announcement" rows="6" maxlength="2000" required
           placeholder="Board Game Guild: Game Night! Thursday, October 22, 7 to 10 pm in the University Union, Room 220…"></textarea>
+        <label for="flyer" class="flyer-label">Flyer photo <span class="muted">(optional, JPG or PNG, up to 5 MB)</span></label>
+        <input id="flyer" name="flyer" type="file" accept="image/jpeg,image/png">
         <div class="form-row">
           <span id="char-count" class="muted">0 / 2000</span>
           <button id="submit-button" type="submit">Send to the agent</button>
