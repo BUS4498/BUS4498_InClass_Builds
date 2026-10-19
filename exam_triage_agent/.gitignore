@@ -1,0 +1,7 @@
+# Local runtime state and provider configuration
+.env
+.env.*
+!.env.example
+data/
+node_modules/
+__pycache__/
