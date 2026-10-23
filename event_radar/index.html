@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Club Event Radar</title>
+  <meta name="description" content="Campus club events, checked by an AI agent and posted for everyone.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <p class="kicker">BUS 4498 · Campus clubs</p>
+      <h1>Club Event Radar</h1>
+      <p class="lede">Paste your club’s announcement. An AI agent turns it into a clean event card, checks the posting rules, and catches duplicates.</p>
+      <ul class="badges">
+        <li>Free to post</li>
+        <li>Checked by an AI agent</li>
+        <li>Moderators review the rest</li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <section class="card post">
+      <h2>Post an event</h2>
+      <form id="post-form">
+        <label for="announcement">Your announcement
+          <span class="hint">Include the date, start time, and place. Up to 2,000 characters.</span>
+        </label>
+        <textarea id="announcement" name="announcement" maxlength="2000" required
+          placeholder="Board Game Guild: Game Night! Thursday, 7 to 10 pm in the University Union, Room 220…"></textarea>
+        <button type="submit" id="post-button">Send to the agent</button>
+      </form>
+      <div id="result" hidden></div>
+    </section>
+
+    <section class="board-section">
+      <div class="board-head">
+        <h2>Upcoming events</h2>
+        <button type="button" class="ghost" id="refresh">Refresh</button>
+      </div>
+      <ul class="board" id="board">
+        <li class="empty">Loading events…</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>A BUS 4498 practice build. Every club, event, and person in the sample posts is made up.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
