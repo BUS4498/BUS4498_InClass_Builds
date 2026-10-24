@@ -205,5 +205,126 @@
 
   refreshButton.addEventListener("click", loadEvents);
 
+  // ---------- Moderators (Stage 8) ----------
+  // Signed in, a moderator can read every post and approve or reject waiting ones.
+  // The database rules (Stage 8 migration) decide what a signed-in user may change.
+
+  const signInForm = document.getElementById("sign-in-form");
+  const signInButton = document.getElementById("sign-in-button");
+  const signInResult = document.getElementById("sign-in-result");
+  const modPanel = document.getElementById("mod-panel");
+  const modWho = document.getElementById("mod-who");
+  const waitingBoard = document.getElementById("waiting-board");
+  let moderatorEmail = "";
+
+  function showSignInError(message) {
+    signInResult.className = "result error";
+    signInResult.replaceChildren(el("p", "result-label", "Couldn’t sign in"), el("p", "", message));
+    signInResult.hidden = false;
+  }
+
+  function reviewCard(event) {
+    const li = eventCard(event);
+    const review = el("div", "review");
+    review.append(el("p", "why", event.status_reason || "Waiting for a moderator."));
+    if (event.note_for_moderator) review.append(el("p", "original", "Note from the agent: " + event.note_for_moderator));
+    review.append(el("p", "original", event.announcement));
+
+    const actions = el("p", "actions");
+    const approve = el("button", "", "Approve");
+    const reject = el("button", "ghost", "Reject");
+    approve.type = "button";
+    reject.type = "button";
+    approve.addEventListener("click", function () { reviewPost(event.id, "published", [approve, reject]); });
+    reject.addEventListener("click", function () { reviewPost(event.id, "rejected", [approve, reject]); });
+    actions.append(approve, reject);
+    review.append(actions);
+
+    // The review sits under the event details, inside the card's middle column.
+    li.querySelector(".event-body").append(review);
+    return li;
+  }
+
+  async function loadWaiting() {
+    waitingBoard.replaceChildren(el("li", "empty", "Loading waiting posts…"));
+    const { data, error } = await db
+      .from("events")
+      .select("*")
+      .eq("status", "waiting")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      waitingBoard.replaceChildren(el("li", "empty", "Couldn’t load waiting posts. Try signing in again."));
+      return;
+    }
+    if (!data || data.length === 0) {
+      waitingBoard.replaceChildren(el("li", "empty", "Nothing is waiting. All caught up!"));
+      return;
+    }
+    waitingBoard.replaceChildren(...data.map(reviewCard));
+  }
+
+  async function reviewPost(id, status, buttons) {
+    buttons.forEach(function (b) { b.disabled = true; });
+    const { error } = await db
+      .from("events")
+      .update({ status: status, reviewed_at: new Date().toISOString(), reviewed_by: moderatorEmail })
+      .eq("id", id);
+    buttons.forEach(function (b) { b.disabled = false; });
+
+    if (error) {
+      console.error(error);
+      const message = error.code === "23505"
+        ? "Another live post already has the same date, start time, and place."
+        : "Couldn’t save that review. Please try again.";
+      window.alert(message);
+      return;
+    }
+    loadWaiting();
+    loadEvents();
+  }
+
+  function showModerator(session) {
+    if (session) {
+      moderatorEmail = session.user.email || "";
+      modWho.textContent = "Signed in as " + moderatorEmail;
+      signInForm.hidden = true;
+      modPanel.hidden = false;
+      loadWaiting();
+    } else {
+      moderatorEmail = "";
+      signInForm.hidden = false;
+      modPanel.hidden = true;
+      waitingBoard.replaceChildren();
+    }
+  }
+
+  signInForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    signInButton.disabled = true;
+    signInResult.hidden = true;
+    const { error } = await db.auth.signInWithPassword({
+      email: document.getElementById("mod-email").value.trim(),
+      password: document.getElementById("mod-password").value,
+    });
+    signInButton.disabled = false;
+    if (error) {
+      showSignInError("Check your email and password and try again.");
+      return;
+    }
+    document.getElementById("mod-password").value = "";
+  });
+
+  document.getElementById("sign-out").addEventListener("click", async function () {
+    await db.auth.signOut();
+  });
+
+  // Runs on page load and on every sign-in or sign-out. The setTimeout keeps
+  // database calls out of the sign-in callback itself (Supabase's advice).
+  db.auth.onAuthStateChange(function (_event, session) {
+    setTimeout(function () { showModerator(session); }, 0);
+  });
+
   loadEvents();
 })();
