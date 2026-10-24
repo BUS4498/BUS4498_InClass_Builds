@@ -54,8 +54,10 @@
     <details class="card mod" id="mod">
       <summary>Moderator sign-in</summary>
 
-      <form id="sign-in-form">
-        <label for="mod-email">Email</label>
+      <form id="sign-in-form" novalidate>
+        <label for="mod-email">Email
+          <span class="hint">The email address of your moderator account, not a user name.</span>
+        </label>
         <input type="email" id="mod-email" autocomplete="username" required>
         <label for="mod-password">Password</label>
         <input type="password" id="mod-password" autocomplete="current-password" required>

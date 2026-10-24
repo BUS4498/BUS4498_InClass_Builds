@@ -302,15 +302,33 @@
 
   signInForm.addEventListener("submit", async function (e) {
     e.preventDefault();
+    const email = document.getElementById("mod-email").value.trim();
+    const password = document.getElementById("mod-password").value;
+    // The form has novalidate, so these checks show a clear message instead of a browser pop-up.
+    if (!email.includes("@")) {
+      showSignInError("Please enter the email address of your moderator account (for example, name@calpoly.edu), not a user name.");
+      return;
+    }
+    if (!password) {
+      showSignInError("Please enter your password.");
+      return;
+    }
+
     signInButton.disabled = true;
     signInResult.hidden = true;
-    const { error } = await db.auth.signInWithPassword({
-      email: document.getElementById("mod-email").value.trim(),
-      password: document.getElementById("mod-password").value,
-    });
+    let error;
+    try {
+      ({ error } = await db.auth.signInWithPassword({ email: email, password: password }));
+    } catch (err) {
+      error = err;
+    }
     signInButton.disabled = false;
     if (error) {
-      showSignInError("Check your email and password and try again.");
+      console.error(error);
+      const message = error.status === 400
+        ? "That email and password don’t match a moderator account. Check them and try again."
+        : "Couldn’t reach the sign-in service. Check your internet connection and try again.";
+      showSignInError(message);
       return;
     }
     document.getElementById("mod-password").value = "";
