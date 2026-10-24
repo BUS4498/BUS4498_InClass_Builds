@@ -7,9 +7,13 @@
   const db = window.supabase.createClient(config.supabaseUrl, config.publishableKey);
   const AGENT_URL = config.supabaseUrl + "/functions/v1/submit-event";
 
-  // Only the columns the website is allowed to read (see the Stage 4 grants).
+  // Only the columns the website is allowed to read (see the Stage 4 and Stage 7 grants).
   const PUBLIC_COLUMNS =
-    "id, created_at, status, title, club, event_date, start_time, end_time, place_name, place_detail, cost, free_food, summary";
+    "id, created_at, status, title, club, event_date, start_time, end_time, place_name, place_detail, cost, free_food, summary, flyer_url";
+
+  // Flyers are shown only if they come from this project's flyers bucket.
+  const FLYER_PREFIX = config.supabaseUrl + "/storage/v1/object/public/flyers/";
+  const MAX_FLYER_BYTES = 5 * 1024 * 1024;
 
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -17,6 +21,7 @@
   const board = document.getElementById("board");
   const form = document.getElementById("post-form");
   const textarea = document.getElementById("announcement");
+  const flyerInput = document.getElementById("flyer");
   const postButton = document.getElementById("post-button");
   const result = document.getElementById("result");
   const refreshButton = document.getElementById("refresh");
@@ -88,6 +93,16 @@
     if (tags.childElementCount > 0) body.append(tags);
 
     li.append(body);
+
+    // 3. The flyer photo (Stage 7)
+    if (event.flyer_url && event.flyer_url.startsWith(FLYER_PREFIX)) {
+      const img = el("img", "flyer");
+      img.src = event.flyer_url;
+      img.alt = "Flyer for " + (event.title || "this event");
+      img.loading = "lazy";
+      li.append(img);
+    }
+
     return li;
   }
 
@@ -143,6 +158,15 @@
       showResult("error", "Please paste an announcement first.");
       return;
     }
+    const flyer = flyerInput.files[0];
+    if (flyer && !["image/jpeg", "image/png"].includes(flyer.type)) {
+      showResult("error", "The photo must be a JPG or PNG.");
+      return;
+    }
+    if (flyer && flyer.size > MAX_FLYER_BYTES) {
+      showResult("error", "The photo is too big. Please use a JPG or PNG under 5 MB.");
+      return;
+    }
 
     postButton.disabled = true;
     postButton.textContent = "The agent is reading your post…";
@@ -151,6 +175,7 @@
     try {
       const body = new FormData();
       body.append("announcement", text);
+      if (flyer) body.append("flyer", flyer);
       // The publishable key goes on the apikey header only (no Authorization header).
       const response = await fetch(AGENT_URL, {
         method: "POST",
@@ -163,10 +188,11 @@
         showResult("error", answer.message || "The agent couldn’t handle that post.");
       } else {
         showResult(answer.status, answer.message, answer.reasons);
-        if (answer.status === "published") {
+        if (answer.status === "published" || answer.status === "waiting") {
           textarea.value = "";
-          loadEvents();
+          flyerInput.value = "";
         }
+        if (answer.status === "published") loadEvents();
       }
     } catch (err) {
       console.error(err);
