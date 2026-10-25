@@ -412,7 +412,8 @@ Deno.serve(async (req) => {
       ctx.thread = thread;
       notes.push(`Chat: read ${thread.length} earlier message${thread.length === 1 ? "" : "s"} from ${sourceName || "the same person"} in the last few minutes.`);
     }
-    const preClub = memoryOn ? (ctx.clubs = await loadClubs(db), clubInText(ctx.clubs, announcement)) : null;
+    // A follow-up ("actually, 8 pm") names no club itself, so the sender's earlier messages count too.
+    const preClub = memoryOn ? (ctx.clubs = await loadClubs(db), clubInText(ctx.clubs, ctx.thread.concat(announcement).join("\n"))) : null;
     if (memoryOn && preClub) ctx.history = await loadHistory(db, preClub.name);
     if (memoryOn) ctx.lessons = await loadLessons(db);
 
@@ -502,6 +503,21 @@ Deno.serve(async (req) => {
       source_id: sourceId,
       source_name: sourceName,
     };
+
+    // An update that keeps the same date, time, and place (a new room, a new title, a new cost) would collide
+    // with its own earlier post, so it edits that post in place instead of adding a row.
+    if (old && status === old.status && row.dedupe_key && row.dedupe_key === `${old.event_date}|${(old.start_time ?? "").slice(0, 5)}|${old.place_code}`) {
+      const { data: edited, error: editError } = await db.from("events")
+        .update({ title: row.title, place_detail: row.place_detail, cost: row.cost, free_food: row.free_food, end_time: row.end_time, summary: row.summary, agent_notes: notes, status_reason: reasons.join(" ") })
+        .eq("id", old.id).select().single();
+      if (!editError) {
+        return reply(200, {
+          ok: true, status, message: `${MESSAGES[status]} The club's earlier post, “${old.title}”, was updated in place.`, reasons, event: edited, looked_at: notes, replaced: null, edited: true,
+          lessons_used: used,
+        });
+      }
+      console.error("In-place update failed", editError);
+    }
 
     const { data: saved, error } = await db.from("events").insert(row).select().single();
     if (error) {
