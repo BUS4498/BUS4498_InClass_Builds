@@ -140,3 +140,26 @@ button.ghost:hover { border-color: var(--accent); box-shadow: none; }
   .flyer { grid-column: 1 / -1; width: 100%; height: 190px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---------- Week 10: what the agent looked at, and the lessons moderators teach it ---------- */
+.memo { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--bg); border: 1px dashed var(--line-2); font-size: .9rem; }
+.memo-title { margin: 0 0 4px; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.memo ul { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.memo li { margin: 2px 0; }
+.teach-inline { display: block; margin: 10px 0 2px; font-weight: 600; font-size: .92rem; }
+.teach-inline input[type=text] { margin-top: 4px; font-weight: 400; }
+.teach textarea { min-height: 72px; }
+.teach button[type=submit] { width: auto; }
+.lessons { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.lesson { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+.lesson.off { opacity: .62; }
+.lesson.off .lesson-text { text-decoration: line-through; text-decoration-color: var(--line-2); }
+.lesson-text { margin: 0; font-weight: 600; }
+.lesson-meta { margin: 2px 0 0; font-size: .84rem; color: var(--muted); }
+.switch { position: relative; display: inline-block; width: 44px; height: 26px; margin-top: 2px; cursor: pointer; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch .knob { position: absolute; inset: 0; border-radius: 999px; background: var(--line-2); transition: background .15s; }
+.switch .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .15s; }
+.switch input:checked + .knob { background: var(--ok); }
+.switch input:checked + .knob::after { transform: translateX(18px); }
+.switch input:focus-visible + .knob { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -2,3 +2,7 @@
 # The website calls the AI agent with the publishable key, which isn't a JWT, so JWT verification is off.
 [functions.submit-event]
 verify_jwt = false
+
+# The chat-channel reader (Stage 14) is called by a scheduled job and by GroupMe, with no sign-in token.
+[functions.read-channel]
+verify_jwt = false
