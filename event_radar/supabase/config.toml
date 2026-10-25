@@ -3,6 +3,12 @@
 [functions.submit-event]
 verify_jwt = false
 
-# The chat-channel reader (Stage 14) is called by a scheduled job and by GroupMe, with no sign-in token.
+# The chat-channel readers (Stage 14) are called by a scheduled job and by the chat app, with no sign-in token.
 [functions.read-channel]
+verify_jwt = false
+
+[functions.read-discord]
+verify_jwt = false
+
+[functions.read-slack]
 verify_jwt = false

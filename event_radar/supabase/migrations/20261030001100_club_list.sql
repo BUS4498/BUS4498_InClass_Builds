@@ -41,4 +41,12 @@ on conflict (name) do nothing;
 -- What the agent looked at before it decided, saved with each post and shown to the moderator.
 alter table public.events add column if not exists agent_notes text[] not null default '{}';
 
+-- Moderator tools: "Clear the board" on the website deletes every post. Only signed-in moderators can.
+drop policy if exists "Moderators can clear the board" on public.events;
+create policy "Moderators can clear the board"
+  on public.events for delete
+  to authenticated
+  using (true);
+grant delete on public.events to authenticated;
+
 create index if not exists events_by_club on public.events (club, status, event_date);

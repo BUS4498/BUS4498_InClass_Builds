@@ -27,7 +27,9 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-type Msg = { id: string; text: string | null; name: string; sender_type?: string; system?: boolean };
+type Msg = { id: string; text: string | null; name: string; user_id?: string; created_at?: number; sender_type?: string; system?: boolean };
+const THREAD_MINUTES = 10;   // the sender's messages from this many minutes before count as context
+const THREAD_MAX = 4;
 type Decision = { ok: boolean; status?: string; message?: string; reasons?: string[]; already_read?: boolean; event?: Record<string, unknown> | null };
 
 function reply(status: number, body: Record<string, unknown>) {
@@ -56,6 +58,20 @@ async function groupMeGet(path: string, token: string): Promise<{ status: number
   if (!res.ok) throw new Error(`GroupMe answered ${res.status} for ${path.split("?")[0]}. Check GROUPME_TOKEN and GROUPME_GROUP_ID.`);
   const data = await res.json();
   return { status: res.status, messages: (data?.response?.messages ?? []) as Msg[] };
+}
+
+// Short-term memory: the same person's messages from the minutes before this one, oldest first.
+// GroupMe returns the messages before an ID newest first.
+async function threadBefore(m: Msg, group: string, token: string): Promise<string[]> {
+  try {
+    const earlier = await groupMeGet(`/groups/${group}/messages?before_id=${encodeURIComponent(m.id)}&limit=10`, token);
+    const since = (m.created_at ?? 0) - THREAD_MINUTES * 60;
+    return earlier.messages
+      .filter((e) => e.user_id === m.user_id && !e.system && e.sender_type !== "bot" && (e.text ?? "").trim() && (e.created_at ?? 0) >= since)
+      .slice(0, THREAD_MAX).reverse().map((e) => (e.text ?? "").trim());
+  } catch (_) {
+    return [];
+  }
 }
 
 // The bot's answer in the group: what the agent decided, in one line.
@@ -154,10 +170,11 @@ Deno.serve(async (req) => {
       const text = (m.text ?? "").trim();
       if (m.system || m.sender_type === "bot" || !text) continue;
       const who = m.name || "Someone";
+      const thread = await threadBefore(m, group, token);
       const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/submit-event`, {
         method: "POST",
         headers: { apikey: callerKey(), "Content-Type": "application/json" },
-        body: JSON.stringify({ announcement: text.slice(0, 2000), source: SOURCE, source_id: m.id, source_name: who }),
+        body: JSON.stringify({ announcement: text.slice(0, 2000), source: SOURCE, source_id: m.id, source_name: who, thread }),
       });
       const decision: Decision = await res.json().catch(() => ({ ok: false, message: `The agent didn't answer (${res.status}).` }));
       results.push({ id: m.id, from: who, status: decision.ok ? decision.status : "error", message: decision.message ?? "" });
