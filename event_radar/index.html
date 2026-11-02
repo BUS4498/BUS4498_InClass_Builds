@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Club Event Radar</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="topbar">
@@ -90,6 +90,7 @@
       <div class="tabs" role="tablist" aria-label="Moderator sections">
         <button type="button" class="tab" role="tab" data-tab="waiting" aria-selected="true">Waiting <span class="count" id="waitingCount">0</span></button>
         <button type="button" class="tab" role="tab" data-tab="lessons" aria-selected="false">Lessons <span class="count" id="lessonsCount">0</span></button>
+        <button type="button" class="tab" role="tab" data-tab="permissions" aria-selected="false">Permissions <span class="count" id="permsCount">0</span></button>
         <button type="button" class="tab" role="tab" data-tab="tools" aria-selected="false">Tools</button>
       </div>
       <section class="tabpanel" data-panel="waiting">
@@ -107,6 +108,11 @@
         <p id="lessonsStatus" class="muted" role="status"></p>
         <ul id="lessonsList" class="lessons"></ul>
       </section>
+      <section class="tabpanel" data-panel="permissions" hidden>
+        <p class="muted">The agent reads these switches and limits at the start of every post, so a change applies to the next post. Type the reason first: the change is saved with your email and the time.</p>
+        <p id="permsStatus" class="muted" role="status"></p>
+        <ul id="permsList" class="lessons"></ul>
+      </section>
       <section class="tabpanel" data-panel="tools" hidden>
         <h3>Clear the board</h3>
         <p class="muted">Deletes every post, published or not. The club list and the lessons stay. Use it to start a demo clean.</p>
@@ -121,6 +127,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="config.js?v=2"></script>
-<script src="app.js"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

@@ -219,3 +219,9 @@ form button[type=submit] { margin-top: 16px; width: 100%; }
   .drawer .panel { padding: 16px 16px 28px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- Week 11: the Permissions tab (reuses .lessons, .lesson, .switch, .teach-inline) ---------- */
+.perm-number { width: 80px; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; font-weight: 700; text-align: center; }
+.lesson-body button.small { margin-top: 8px; }
+.result.paused { background: var(--wait-soft); border-color: var(--wait); }
+.result.paused .result-label { color: var(--wait); }

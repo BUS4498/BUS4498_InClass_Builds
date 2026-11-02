@@ -7,6 +7,9 @@
 // Before it decides, it looks things up: the club list (knowledge it reads on every post),
 // the sender's earlier chat messages and the club's own earlier posts (memory, so an update replaces
 // the old card), and the lessons moderators wrote (what people taught it). It records what it looked at.
+// Week 11: at the start of every post it reads its permissions (the agent_permissions table): the off switch,
+// "Publish on its own", and the limits a moderator may change. Every limit is applied here, in code.
+// A test-mode request (dry_run: true) decides as usual but saves, uploads, and changes nothing.
 //
 // The AI key lives in Supabase Secrets (ANTHROPIC_API_KEY or OPENAI_API_KEY). It never goes in GitHub.
 // Deploy with JWT verification off (verify_jwt = false): the website calls this with the publishable key.
@@ -14,11 +17,13 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.117.2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 
+// Fixed limits from the permissions plan. Only the builders change these, by changing the code.
 const CLAUDE_MODEL = "claude-haiku-5-5";
 const OPENAI_MODEL = "gpt-6-luna";
-const DAILY_LIMIT = Number(Deno.env.get("DAILY_LIMIT")) || 100; // spending guard: at most this many posts in any 24 hours
-const MAX_TEXT = 2000;
-const DAYS_AHEAD = 60;
+const TEST_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5"]; // "AI models": test mode may compare these, nothing else
+const MAX_TEXT = 2000;                                           // "Post length"
+// The limits a moderator may change (posts per day, days ahead, the new-club wait) and the switches are rows
+// in the agent_permissions table, read on every post. See loadPermissions below.
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ["image/jpeg", "image/png"];
 
@@ -86,14 +91,20 @@ type Card = {
 type Photo = { bytes: Uint8Array; type: string };
 
 // What the agent looks up before it decides: the club list, the club's upcoming posts, and the lessons.
-type Club = { name: string; nicknames: string[]; usual_place_code: string; usual_place_detail: string };
+// established: on the list before the new-club wait began. joined: when the club was added to the list.
+type Club = { name: string; nicknames: string[]; usual_place_code: string; usual_place_detail: string; established: boolean; joined: string };
 type PastPost = {
   id: string; title: string; event_date: string | null; start_time: string | null; end_time: string | null;
   place_code: string; place_name: string; place_detail: string; cost: string; free_food: boolean; status: string;
 };
 type Lesson = { id: string; lesson: string };
 // thread: the sender's earlier chat messages (short-term memory), sent by the chat-channel reader.
-type Ctx = { clubs: Club[]; history: PastPost[]; lessons: Lesson[]; thread: string[] };
+// daysAhead: the "Days ahead" number a moderator set, so rule R8 in the prompt matches the code's check.
+type Ctx = { clubs: Club[]; history: PastPost[]; lessons: Lesson[]; thread: string[]; daysAhead: number };
+// What the AI used on this run, returned with every answer.
+type Usage = { model: string; input_tokens: number; output_tokens: number };
+// One row of agent_permissions: a switch (on/off) or a number a moderator may change, with their reason.
+type Perm = { key: string; label: string; kind: string; value: string; reason: string; changed_by: string; updated_at: string };
 
 class PostError extends Error {
   status: number;
@@ -134,14 +145,62 @@ function pacificToday(): { iso: string; weekday: string } {
 
 /* ---------- knowledge: the club list (Stage 11) ---------- */
 async function loadClubs(db: SupabaseClient): Promise<Club[]> {
-  const { data, error } = await db.from("clubs").select("name, nicknames, usual_place_code, usual_place_detail").eq("active", true).order("name");
+  const { data, error } = await db.from("clubs").select("name, nicknames, usual_place_code, usual_place_detail, established, created_at").eq("active", true).order("name");
   if (error) { console.error("Couldn't read the club list", error); return []; }
   return (data ?? []).map((r) => ({
     name: String(r.name),
     nicknames: String(r.nicknames ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     usual_place_code: String(r.usual_place_code ?? "").trim().toUpperCase(),
     usual_place_detail: String(r.usual_place_detail ?? "").trim(),
+    established: r.established === true,
+    joined: String(r.created_at ?? ""),
   }));
+}
+
+/* ---------- permissions: the switches and limits a moderator may change (Week 11) ---------- */
+// Every permission starts off: if the table can't be read, or a row is missing, the agent doesn't act.
+const PERMISSION_KEYS = ["paused", "publish_on_own", "posts_per_day", "days_ahead", "new_club_wait_days"];
+async function loadPermissions(db: SupabaseClient): Promise<Record<string, Perm>> {
+  const { data, error } = await db.from("agent_permissions").select("key, label, kind, value, reason, changed_by, updated_at").order("sort");
+  if (error) {
+    console.error("Couldn't read the permissions", error);
+    throw new PostError("The agent couldn't read its permissions (the agent_permissions table), so it won't act. Check the function logs.", 503);
+  }
+  const perms: Record<string, Perm> = {};
+  (data ?? []).forEach((p) => { perms[p.key] = p as Perm; });
+  const missing = PERMISSION_KEYS.filter((k) => !perms[k] || (perms[k].kind === "number" && !/^\d+$/.test(perms[k].value)));
+  if (missing.length) throw new PostError(`The permissions table is missing ${missing.join(", ")}, so the agent won't act.`, 503);
+  return perms;
+}
+function isOn(p: Perm): boolean { return p.value === "on"; }
+function num(p: Perm): number { return Number(p.value); }
+// "switch “Publish on its own” (off), set by pat@calpoly.edu: “Midterm week”": names the switch and the moderator's reason.
+function because(p: Perm): string {
+  return `${p.kind} “${p.label}” (${p.value}), set by ${p.changed_by || "a moderator"}: “${p.reason}”`;
+}
+// The line saved with every post: every switch the agent read, and which ones applied to this post.
+function permissionsNote(perms: Record<string, Perm>, applied: string[]): string {
+  const read = PERMISSION_KEYS.map((k) => `${perms[k].label} = ${perms[k].value}`).join(", ");
+  return `Permissions: read ${PERMISSION_KEYS.length} switches (${read})${applied.length ? `; applied to this post: ${applied.join(", ")}` : "; none held this post"}.`;
+}
+
+/* ---------- privacy: no personal phone number or payment handle on the website (rule R6, plan Never 5) ---------- */
+// The AI is told to leave these out; the code removes them anyway, from every field the website shows.
+const PAY_APPS = /\b(venmo|cash ?app|zelle|paypal)\b/i;
+const PAY_LINK = /\b(account\.venmo\.com|venmo\.com|cash\.app|paypal\.me)\/\S*/gi;
+const CASHTAG = /(^|[^\w$])\$[A-Za-z][\w-]{1,19}\b/g;
+const AT_HANDLE = /(^|[^\w])@[\w.-]{2,30}\b/g;
+const EMAIL = /\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b/g;
+const PHONE = /(\+?1[\s.-]?)?(\(\d{3}\)|\b\d{3})[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+function has(re: RegExp, s: string): boolean { return new RegExp(re.source, re.flags.replace("g", "")).test(s); }
+// Does the post carry a payment handle? (A $cashtag, a payment link, or a handle next to a payment app's name.)
+function paymentHandle(text: string): boolean {
+  return has(PAY_LINK, text) || has(CASHTAG, text) || (has(PAY_APPS, text) && (has(AT_HANDLE, text) || has(PHONE, text) || has(EMAIL, text)));
+}
+function scrub(s: string, payApp: boolean): string {
+  let out = s.replace(PAY_LINK, "").replace(EMAIL, "").replace(PHONE, "").replace(CASHTAG, "$1");
+  if (payApp) out = out.replace(AT_HANDLE, "$1");
+  return out.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
 }
 // "The Board Game Guild!" and "board game guild" are the same name.
 function simple(s: string): string {
@@ -214,7 +273,7 @@ function systemPrompt(ctx: Ctx): string {
   const places = Object.entries(PLACES).map(([code, name]) => `${code}: ${name}`).join("\n");
   const parts = [
     `You turn club announcements into event cards for a campus events website at Cal Poly.\nToday is ${today.weekday}, ${today.iso} (Pacific time).`,
-    `Posting rules:\n${RULES}`,
+    `Posting rules:\n${RULES.replace("the next 60 days", `the next ${ctx.daysAhead} days`)}`,
     `Campus places (use the code):\n${places}`,
   ];
   parts.push(clubsPrompt(ctx.clubs));
@@ -247,7 +306,8 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-async function askClaude(announcement: string, photo: Photo | null, ctx: Ctx): Promise<Card> {
+// `usage` is filled in with the model and the tokens this call used.
+async function askClaude(announcement: string, photo: Photo | null, ctx: Ctx, usage: Usage): Promise<Card> {
   const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
   // deno-lint-ignore no-explicit-any
   const content: any[] = [];
@@ -256,7 +316,7 @@ async function askClaude(announcement: string, photo: Photo | null, ctx: Ctx): P
   let msg;
   try {
     msg = await client.messages.create({
-      model: CLAUDE_MODEL,
+      model: usage.model,
       max_tokens: 4000,
       system: systemPrompt(ctx),
       messages: [{ role: "user", content }],
@@ -268,13 +328,15 @@ async function askClaude(announcement: string, photo: Photo | null, ctx: Ctx): P
     if (err instanceof Anthropic.APIError) throw new PostError(`The AI service returned an error (${err.status}).`, 502);
     throw err;
   }
+  usage.input_tokens = msg.usage?.input_tokens ?? 0;
+  usage.output_tokens = msg.usage?.output_tokens ?? 0;
   if (msg.stop_reason === "refusal") throw new PostError("The AI declined to read this post.", 422);
   const block = msg.content.find((b) => b.type === "text");
   if (!block || block.type !== "text") throw new PostError("The AI sent back an empty answer. Try again.", 502);
   return JSON.parse(block.text) as Card;
 }
 
-async function askOpenAI(announcement: string, photo: Photo | null, ctx: Ctx): Promise<Card> {
+async function askOpenAI(announcement: string, photo: Photo | null, ctx: Ctx, usage: Usage): Promise<Card> {
   // deno-lint-ignore no-explicit-any
   const content: any[] = [];
   if (photo) content.push({ type: "input_image", image_url: `data:${photo.type};base64,${toBase64(photo.bytes)}` });
@@ -283,7 +345,7 @@ async function askOpenAI(announcement: string, photo: Photo | null, ctx: Ctx): P
     method: "POST",
     headers: { "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model: usage.model,
       instructions: systemPrompt(ctx),
       input: [{ role: "user", content }],
       text: { format: { type: "json_schema", name: "event_card", schema: CARD_SCHEMA, strict: true } },
@@ -293,6 +355,8 @@ async function askOpenAI(announcement: string, photo: Photo | null, ctx: Ctx): P
   if (res.status === 429) throw new PostError("The AI is busy, or the key's spending limit was reached. Try again in a minute.", 503);
   if (!res.ok) throw new PostError(`The AI service returned an error (${res.status}).`, 502);
   const data = await res.json();
+  usage.input_tokens = data.usage?.input_tokens ?? 0;
+  usage.output_tokens = data.usage?.output_tokens ?? 0;
   // deno-lint-ignore no-explicit-any
   const text = (data.output ?? []).flatMap((o: any) => o.content ?? []).find((c: any) => c.type === "output_text")?.text;
   if (!text) throw new PostError("The AI sent back an empty answer. Try again.", 502);
@@ -313,8 +377,9 @@ function daysFromToday(isoDate: string): number {
 }
 
 // The code, not the AI, decides whether a post is published. The AI reads and judges; the rules decide.
-// `extra` holds reasons from what the agent looked up (the club list, the lessons). They can only add holds.
-function decide(card: Card, hasPhoto: boolean, extra: string[] = []): { status: string; reasons: string[] } {
+// `extra` holds reasons from what the agent looked up (the club list, the lessons, the switches). They can only add holds.
+// `daysAhead` is the "Days ahead" row from agent_permissions; `applied` collects the switches that held the post.
+function decide(card: Card, hasPhoto: boolean, extra: string[], daysAhead: Perm, applied: string[]): { status: string; reasons: string[] } {
   if (!card.is_event) return { status: "rejected", reasons: [card.not_event_reason || "This doesn't look like an event (rule R1)."] };
   const reasons: string[] = [];
   const missing = new Set(card.missing);
@@ -327,7 +392,10 @@ function decide(card: Card, hasPhoto: boolean, extra: string[] = []): { status: 
   if (date) {
     const days = daysFromToday(date);
     if (days < 0) reasons.push("The date has already passed (rule R8).");
-    else if (days > DAYS_AHEAD) reasons.push(`The date is more than ${DAYS_AHEAD} days away (rule R8).`);
+    else if (days > num(daysAhead)) {
+      reasons.push(`The date is more than ${num(daysAhead)} days away (rule R8; ${because(daysAhead)}).`);
+      applied.push(daysAhead.label);
+    }
   }
   card.rule_flags.forEach((f) => reasons.push(f));
   extra.forEach((r) => reasons.push(r));
@@ -347,6 +415,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const db = createClient(Deno.env.get("SUPABASE_URL")!, serverKey(), { auth: { persistSession: false } });
 
+  // Every answer says how long the run took and what the AI used, so tests can report seconds and cost per case.
+  const started = Date.now();
+  const usage: Usage = { model: "", input_tokens: 0, output_tokens: 0 };
+  let dryRun = false;
+  const answer = (status: number, body: Record<string, unknown>) =>
+    reply(status, { ...body, dry_run: dryRun, ms: Date.now() - started, usage });
+
   // A quick check that the agent is running, without calling the AI.
   if (req.method === "GET") {
     const ai = aiProvider();
@@ -358,14 +433,15 @@ Deno.serve(async (req) => {
     };
     status.clubs = (await db.from("clubs").select("id", { count: "exact", head: true }).eq("active", true)).count ?? 0;
     status.lessons = (await db.from("lessons").select("id", { count: "exact", head: true }).eq("active", true)).count ?? 0;
-    return reply(200, status);
+    // The permissions it would read with the next post: the row count, and each switch's value.
+    const { data: perms } = await db.from("agent_permissions").select("key, kind, value").order("sort");
+    status.permissions = perms?.length ?? 0;
+    status.switches = Object.fromEntries((perms ?? []).map((p) => [p.key, p.kind === "number" ? Number(p.value) : p.value]));
+    return answer(200, status);
   }
-  if (req.method !== "POST") return reply(405, { ok: false, message: "Send a POST request." });
+  if (req.method !== "POST") return answer(405, { ok: false, message: "Send a POST request." });
 
   try {
-    const ai = aiProvider();
-    if (!ai) throw new PostError("No AI key yet. Add ANTHROPIC_API_KEY or OPENAI_API_KEY in Edge Functions → Secrets.", 503);
-
     // Read the post: a form (from the website) or JSON.
     let announcement = "";
     let photo: Photo | null = null;
@@ -374,6 +450,8 @@ Deno.serve(async (req) => {
     let source = "website", sourceId = "", sourceName = "";
     // It also sends the sender's earlier messages from the last few minutes, oldest first (short-term memory).
     let thread: string[] = [];
+    // Test mode: dry_run decides as usual but saves nothing. It may name a model to compare.
+    let model = "";
     const type = req.headers.get("content-type") ?? "";
     if (type.includes("application/json")) {
       const body = await req.json();
@@ -382,9 +460,13 @@ Deno.serve(async (req) => {
       sourceId = String(body.source_id ?? "").slice(0, 80);
       sourceName = String(body.source_name ?? "").slice(0, 80);
       if (Array.isArray(body.thread)) thread = body.thread.map((t: unknown) => String(t ?? "").trim().slice(0, 500)).filter(Boolean).slice(-4);
+      dryRun = body.dry_run === true;
+      model = String(body.model ?? "").trim();
     } else {
       const form = await req.formData();
       announcement = String(form.get("announcement") ?? "");
+      dryRun = form.get("dry_run") === "true";
+      model = String(form.get("model") ?? "").trim();
       const file = form.get("flyer");
       if (file instanceof File && file.size > 0) {
         if (!PHOTO_TYPES.includes(file.type)) throw new PostError("The photo must be a JPG or PNG.");
@@ -392,27 +474,57 @@ Deno.serve(async (req) => {
         photo = { bytes: new Uint8Array(await file.arrayBuffer()), type: file.type };
       }
     }
+
+    // AI models (fixed in the plan): Claude Haiku 5.5; in test mode, Claude Sonnet 5.5 too. Nothing else, ever.
+    const ai = aiProvider();
+    usage.model = ai === "openai" ? OPENAI_MODEL : CLAUDE_MODEL;
+    if (model) {
+      if (!dryRun) throw new PostError("A model can be named only in test mode (dry_run: true).");
+      if (!TEST_MODELS.includes(model)) throw new PostError(`Test mode can use only ${TEST_MODELS.join(" or ")}.`);
+      if (ai !== "claude") throw new PostError("Comparing models needs ANTHROPIC_API_KEY in Edge Functions → Secrets.", 503);
+      usage.model = model;
+    }
+
+    // Permissions, read fresh at the start of every post. A moderator's change applies to the next post.
+    const perms = await loadPermissions(db);
+    const applied: string[] = [];   // the switches and limits that held this post
+    // The off switch: paused, the agent stops here. It calls no AI and saves nothing.
+    if (isOn(perms.paused)) {
+      return answer(200, {
+        ok: true,
+        status: "paused",
+        message: "The agent is paused, so this post wasn't read or saved. Post it again once a moderator switches the agent back on.",
+        reasons: [`The agent is paused (${because(perms.paused)}).`],
+        event: null,
+        looked_at: [permissionsNote(perms, [perms.paused.label])],
+      });
+    }
+
+    if (!ai) throw new PostError("No AI key yet. Add ANTHROPIC_API_KEY or OPENAI_API_KEY in Edge Functions → Secrets.", 503);
     announcement = announcement.trim();
     if (!announcement) throw new PostError("Paste the announcement text first.");
+    // Post length (fixed in the plan).
     if (announcement.length > MAX_TEXT) throw new PostError(`Keep the announcement under ${MAX_TEXT} characters.`);
 
-    // Spending guard.
+    // Posts per day: the spending guard. Past the limit, the agent refuses until tomorrow.
     const since = new Date(Date.now() - 86400000).toISOString();
     const { count } = await db.from("events").select("id", { count: "exact", head: true }).gte("created_at", since);
-    if ((count ?? 0) >= DAILY_LIMIT) throw new PostError("The website has reached today's posting limit. Try again tomorrow.", 429);
+    if ((count ?? 0) >= num(perms.posts_per_day)) {
+      throw new PostError(`The website has reached today's posting limit of ${num(perms.posts_per_day)} posts (${because(perms.posts_per_day)}). Try again tomorrow.`, 429);
+    }
 
     // Memory check first: a chat message the agent already handled gets no second decision and no AI call.
     // (The unique index events_one_per_message is the backstop if two runs race.)
     if (sourceId) {
       const { data: seen } = await db.from("events").select("id, status").eq("source", source).eq("source_id", sourceId).maybeSingle();
-      if (seen) return reply(200, { ok: true, status: "duplicate", already_read: true, message: "This chat message was already read.", reasons: [], event: null });
+      if (seen) return answer(200, { ok: true, status: "duplicate", already_read: true, message: "This chat message was already read.", reasons: [], event: null });
     }
 
     // What the agent looks up before it reads the post. Each run starts with a blank desk: the model
     // remembers nothing on its own. Everything below is memory the code builds for it.
-    const ctx: Ctx = { clubs: [], history: [], lessons: [], thread: [] };
+    const ctx: Ctx = { clubs: [], history: [], lessons: [], thread: [], daysAhead: num(perms.days_ahead) };
     const notes: string[] = [];   // what the agent looked at, saved with the post and shown to the moderator
-    const extra: string[] = [];   // reasons added by knowledge, memory, and lessons (they can only add holds)
+    const extra: string[] = [];   // reasons added by knowledge, memory, lessons, and switches (they can only add holds)
     // Short-term memory: the sender's earlier chat messages, so "actually 8 pm" makes sense.
     if (thread.length) {
       ctx.thread = thread;
@@ -430,7 +542,7 @@ Deno.serve(async (req) => {
     ctx.lessons = await loadLessons(db);
 
     // The AI reads the post and fills in the card.
-    const card = ai === "claude" ? await askClaude(announcement, photo, ctx) : await askOpenAI(announcement, photo, ctx);
+    const card = ai === "claude" ? await askClaude(announcement, photo, ctx, usage) : await askOpenAI(announcement, photo, ctx, usage);
     card.place_code = card.place_code.trim().toUpperCase();
 
     // Knowledge: the club list. A nickname becomes the official name; an unknown club waits.
@@ -447,6 +559,17 @@ Deno.serve(async (req) => {
     } else {
       notes.push(`Club list (${ctx.clubs.length} clubs): no match for “${said || "(no club named)"}”.`);
       extra.push(said ? `“${said}” isn't on the club list yet. A moderator can add it in the clubs table.` : "The post doesn't say which club is hosting, and only listed clubs can post.");
+    }
+
+    // New-club wait: a club added to the list after the plan began waits this many days. The clubs already on
+    // the list then count as established.
+    const wait = num(perms.new_club_wait_days);
+    if (club && !club.established && wait > 0) {
+      const days = Math.max(0, Math.floor((Date.now() - Date.parse(club.joined)) / 86400000));
+      if (!Number.isFinite(days) || days < wait) {
+        extra.push(`${club.name} joined the club list ${days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} ago`}, so its posts wait for a moderator for its first ${wait} days (${because(perms.new_club_wait_days)}).`);
+        applied.push(perms.new_club_wait_days.label);
+      }
     }
 
     // Memory: the club's own upcoming posts. An update replaces the earlier card instead of adding a second one.
@@ -493,8 +616,8 @@ Deno.serve(async (req) => {
     // Lessons: what moderators taught the agent. A lesson can make a post wait; it can't publish one, and it
     // can't reject one either: if the AI let a lesson turn the post into "not an event", the code turns that
     // back into a hold, so a moderator sees it.
-    const applied = [...new Set((card.lessons_applied ?? []).map(Number))].filter((i) => Number.isInteger(i) && i >= 1 && i <= ctx.lessons.length);
-    const used = applied.map((i) => ctx.lessons[i - 1].lesson);
+    const picked = [...new Set((card.lessons_applied ?? []).map(Number))].filter((i) => Number.isInteger(i) && i >= 1 && i <= ctx.lessons.length);
+    const used = picked.map((i) => ctx.lessons[i - 1].lesson);
     if (used.length && !card.is_event) {
       card.is_event = true;
       card.lesson_flags = [...(card.lesson_flags ?? []), card.not_event_reason || "A moderator's lesson applies to this post."];
@@ -507,7 +630,26 @@ Deno.serve(async (req) => {
     if (card.instruction_attempt || INSTRUCTION_CUES.test(announcement)) extra.push("The post tries to give the AI instructions, so a moderator should look at it. Only moderators can teach the agent.");
     notes.push(`Lessons: ${ctx.lessons.length} active${used.length ? `; followed ${used.length}: ${used.map((u) => `“${u}”`).join("; ")}` : ctx.lessons.length ? "; none applied to this post" : ""}.`);
 
-    const { status, reasons } = decide(card, Boolean(photo), extra);
+    // Privacy (plan, Never 5): no personal phone number, email, or payment handle reaches the website, whatever
+    // the AI wrote. A payment handle also makes the post wait (rule R5).
+    const payApp = has(PAY_APPS, announcement);
+    if (paymentHandle(announcement)) extra.push("The post includes a payment handle (Venmo, Cash App, Zelle, or PayPal). It's left off the card, and a moderator should look (rule R5).");
+    let removed = false;
+    for (const f of ["title", "club", "place_detail", "cost", "summary"] as const) {
+      const v = card[f];
+      if (has(PAY_LINK, v) || has(EMAIL, v) || has(PHONE, v) || has(CASHTAG, v) || (payApp && has(AT_HANDLE, v))) { card[f] = scrub(v, payApp); removed = true; }
+    }
+    if (removed) notes.push("Privacy: removed a phone number, email, or payment handle from the card (rule R6).");
+
+    // Publish on its own: off, every post waits for a moderator.
+    if (!isOn(perms.publish_on_own)) {
+      extra.push(`Publishing on its own is switched off, so every post waits for a moderator (${because(perms.publish_on_own)}).`);
+      applied.push(perms.publish_on_own.label);
+    }
+
+    const { status, reasons } = decide(card, Boolean(photo), extra, perms.days_ahead, applied);
+    // What the agent checked: every switch it read, and which ones held this post.
+    notes.unshift(permissionsNote(perms, status === "rejected" ? [] : applied));
 
     const eventDate = validDate(card.event_date);
     const startTime = validTime(card.start_time);
@@ -531,7 +673,7 @@ Deno.serve(async (req) => {
       note_for_moderator: card.note_for_moderator,
       // One live post per date + start time + place. The database enforces it with a unique index.
       dedupe_key: status !== "rejected" && eventDate && startTime && placeCode ? `${eventDate}|${startTime}|${placeCode}` : null,
-      ai_model: ai === "claude" ? CLAUDE_MODEL : OPENAI_MODEL,
+      ai_model: usage.model,
       agent_notes: notes,
       // A waiting update remembers which post it replaces, so approving it retires the old one.
       updates_id: old && status === "waiting" ? old.id : null,
@@ -540,15 +682,38 @@ Deno.serve(async (req) => {
       source_id: sourceId,
       source_name: sourceName,
     };
-
     // An update that keeps the same date, time, and place (a new room, a new title, a new cost) would collide
     // with its own earlier post, so it edits that post in place instead of adding a row.
-    if (old && status === old.status && row.dedupe_key && row.dedupe_key === `${old.event_date}|${(old.start_time ?? "").slice(0, 5)}|${old.place_code}`) {
+    const editInPlace = Boolean(old && status === old.status && row.dedupe_key && row.dedupe_key === `${old.event_date}|${(old.start_time ?? "").slice(0, 5)}|${old.place_code}`);
+
+    // Test mode: the decision is made; now answer without saving, uploading, or changing anything.
+    if (dryRun) {
+      if (row.dedupe_key) {
+        const { data: existing } = await db.from("events")
+          .select("id, title, club, event_date, start_time, place_name, status, created_at")
+          .eq("dedupe_key", row.dedupe_key).in("status", ["published", "waiting"]).maybeSingle();
+        if (existing && !(editInPlace && existing.id === old!.id)) {
+          return answer(200, {
+            ok: true, status: "duplicate", message: `Test mode, nothing was saved. ${MESSAGES.duplicate}`,
+            reasons: ["Same date, start time, and place as a post already in the database."],
+            event: existing, looked_at: notes, replaced: null, lessons_used: used,
+          });
+        }
+      }
+      const would = old && status === "published" ? ` It would replace the club's earlier post, “${old.title}”.` : editInPlace ? ` It would update the club's earlier post, “${old!.title}”, in place.` : "";
+      return answer(200, {
+        ok: true, status, message: `Test mode, nothing was saved. ${MESSAGES[status]}${would}`, reasons, event: row,
+        looked_at: notes, replaced: old && status === "published" ? { id: old.id, title: old.title, event_date: old.event_date, start_time: old.start_time } : null,
+        edited: editInPlace, lessons_used: used,
+      });
+    }
+
+    if (editInPlace && old) {
       const { data: edited, error: editError } = await db.from("events")
         .update({ title: row.title, place_detail: row.place_detail, cost: row.cost, free_food: row.free_food, end_time: row.end_time, summary: row.summary, agent_notes: notes, lessons_used: used, status_reason: reasons.join(" ") })
         .eq("id", old.id).select().single();
       if (!editError) {
-        return reply(200, {
+        return answer(200, {
           ok: true, status, message: `${MESSAGES[status]} The club's earlier post, “${old.title}”, was updated in place.`, reasons, event: edited,
           looked_at: notes, replaced: null, edited: true, lessons_used: used,
         });
@@ -560,12 +725,12 @@ Deno.serve(async (req) => {
     if (error) {
       if (error.code === "23505") {
         if (String(error.message).includes("events_one_per_message")) {
-          return reply(200, { ok: true, status: "duplicate", already_read: true, message: "This chat message was already read.", reasons: [], event: null });
+          return answer(200, { ok: true, status: "duplicate", already_read: true, message: "This chat message was already read.", reasons: [], event: null });
         }
         const { data: existing } = await db.from("events")
           .select("title, club, event_date, start_time, place_name, status, created_at")
           .eq("dedupe_key", row.dedupe_key).in("status", ["published", "waiting"]).maybeSingle();
-        return reply(200, {
+        return answer(200, {
           ok: true,
           status: "duplicate",
           message: MESSAGES.duplicate,
@@ -606,7 +771,7 @@ Deno.serve(async (req) => {
       message = `${MESSAGES.waiting} If a moderator approves it, it replaces the club's earlier post, “${old.title}”.`;
     }
 
-    return reply(200, {
+    return answer(200, {
       ok: true,
       status,
       message,
@@ -617,8 +782,8 @@ Deno.serve(async (req) => {
       lessons_used: used,
     });
   } catch (err) {
-    if (err instanceof PostError) return reply(err.status, { ok: false, message: err.message });
+    if (err instanceof PostError) return answer(err.status, { ok: false, message: err.message });
     console.error(err);
-    return reply(500, { ok: false, message: "Something went wrong in the agent. Check the function logs in Supabase." });
+    return answer(500, { ok: false, message: "Something went wrong in the agent. Check the function logs in Supabase." });
   }
 });

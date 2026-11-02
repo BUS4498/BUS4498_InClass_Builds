@@ -185,7 +185,7 @@
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") loadBoard(true); });
 
   /* ---------- posting by hand: send it to the AI agent ---------- */
-  var LABELS = { published: "Published", waiting: "Waiting for a moderator", rejected: "Not posted", duplicate: "Already posted", error: "Something went wrong" };
+  var LABELS = { published: "Published", waiting: "Waiting for a moderator", rejected: "Not posted", duplicate: "Already posted", paused: "The agent is paused", error: "Something went wrong" };
   function showResult(data) {
     var box = $("postResult"), kind = data.ok ? data.status : "error";
     box.hidden = false;
@@ -244,6 +244,7 @@
       $("modWho").textContent = session.user.email;
       loadWaiting();
       loadLessons();
+      loadPermissions();
     }
   }
   function review(ev, status) {
@@ -385,6 +386,79 @@
     if (!text) return;
     saveLesson(text, null).then(function () { $("lessonText").value = ""; });
   });
+
+  /* ---------- permissions: the switches and limits the agent reads with every post ---------- */
+  // A change needs a reason typed first. The database refuses a change without a new reason, and it stamps
+  // who changed the row and when; the agent itself can only read this table.
+  function savePermission(p, value, reason, done) {
+    db.from("agent_permissions")
+      .update({ value: value, reason: reason, changed_by: session.user.email, updated_at: new Date().toISOString() })
+      .eq("key", p.key)
+      .then(function (res) {
+        if (res.error) { $("permsStatus").textContent = "Couldn't change “" + p.label + "”: " + res.error.message; done(false); return; }
+        toast(p.label + ": " + value);
+        done(true);
+        loadPermissions();
+      });
+  }
+  function loadPermissions() {
+    $("permsStatus").textContent = "Loading…";
+    db.from("agent_permissions").select("*").order("sort", { ascending: true })
+      .then(function (res) {
+        var list = $("permsList");
+        list.textContent = "";
+        if (res.error) { $("permsStatus").textContent = "Couldn't load the permissions: " + res.error.message; return; }
+        res.data.forEach(function (p) {
+          var li = el("li", "lesson");
+          var reasonInput = el("input");
+          reasonInput.type = "text"; reasonInput.maxLength = 300;
+          reasonInput.placeholder = "Why are you changing it? (required)";
+          var control, save = null;
+          if (p.kind === "switch") {
+            control = el("label", "switch");
+            var box = el("input");
+            box.type = "checkbox"; box.checked = p.value === "on"; box.disabled = true;
+            box.setAttribute("aria-label", p.label + " (type a reason first)");
+            box.addEventListener("change", function () {
+              box.disabled = true;
+              savePermission(p, box.checked ? "on" : "off", reasonInput.value.trim(), function (ok) { if (!ok) { box.checked = !box.checked; box.disabled = false; } });
+            });
+            control.appendChild(box);
+            control.appendChild(el("span", "knob"));
+            reasonInput.addEventListener("input", function () { box.disabled = reasonInput.value.trim().length < 3; });
+          } else {
+            control = el("input", "perm-number");
+            control.type = "number"; control.min = "0"; control.max = "99999"; control.step = "1"; control.value = p.value;
+            control.setAttribute("aria-label", p.label);
+            save = el("button", "ghost small", "Save");
+            save.type = "button"; save.disabled = true;
+            var ready = function () { save.disabled = reasonInput.value.trim().length < 3 || !/^\d{1,5}$/.test(control.value) || control.value === p.value; };
+            reasonInput.addEventListener("input", ready);
+            control.addEventListener("input", ready);
+            save.addEventListener("click", function () {
+              save.disabled = true;
+              savePermission(p, control.value, reasonInput.value.trim(), function (ok) { if (!ok) ready(); });
+            });
+          }
+          li.appendChild(control);
+          var body = el("div", "lesson-body");
+          var shown = p.kind === "switch" ? (p.value === "on" ? "On" : "Off") : p.value;
+          body.appendChild(el("p", "lesson-text", p.label + ": " + shown));
+          body.appendChild(el("p", "lesson-meta", "Reason: " + p.reason));
+          body.appendChild(el("p", "lesson-meta", "Changed by " + (p.changed_by || "unknown") + " · " + new Date(p.updated_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
+          var edit = el("label", "teach-inline");
+          edit.appendChild(el("span", null, "Reason for a change"));
+          edit.appendChild(reasonInput);
+          body.appendChild(edit);
+          if (save) body.appendChild(save);
+          li.appendChild(body);
+          list.appendChild(li);
+        });
+        $("permsCount").textContent = String(res.data.length);
+        var paused = res.data.some(function (p) { return p.key === "paused" && p.value === "on"; });
+        $("permsStatus").textContent = paused ? "The agent is paused: it answers “paused” and calls no AI." : res.data.length + " switches and limits. The agent is running.";
+      });
+  }
 
   loadBoard(false);
 })();

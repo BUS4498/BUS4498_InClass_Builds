@@ -100,7 +100,7 @@ event_radar/
 
 **The channel readers** (Stage 14): `POST {Project URL}/functions/v1/read-channel` (GroupMe), `read-discord`, or `read-slack` reads the new messages and sends each to the agent as JSON with `source`, `source_id`, `source_name`, and `thread` (the sender’s earlier messages from the last 10 minutes, oldest first, at most 4); `GET` returns `{ "ok", "ready", "last_message_id", "read_count", "bot" }`, and `GET …?check=groupme|discord|slack` asks the chat app whether the token and the group or channel work (results only, never values).
 
-**Secrets:** `ANTHROPIC_API_KEY` (model `claude-haiku-5-5`) or `OPENAI_API_KEY` (model `gpt-6-luna`). If both exist, use Claude. `HOLD_ALL_POSTS=true` makes every post wait. `DAILY_LIMIT` overrides the spending guard (default 100 posts in 24 hours). Stage 14: `GROUPME_TOKEN`, `GROUPME_GROUP_ID`, and optionally `GROUPME_BOT_ID`; or `DISCORD_BOT_TOKEN` and `DISCORD_CHANNEL_ID`; or `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`.
+**Secrets:** `ANTHROPIC_API_KEY` (model `claude-haiku-5-5`) or `OPENAI_API_KEY` (model `gpt-6-luna`). If both exist, use Claude. `HOLD_ALL_POSTS=true` makes every post wait. (From Week 11 the posts-per-day limit is the `posts_per_day` row in `agent_permissions`; the old `DAILY_LIMIT` secret is no longer read.) Stage 14: `GROUPME_TOKEN`, `GROUPME_GROUP_ID`, and optionally `GROUPME_BOT_ID`; or `DISCORD_BOT_TOKEN` and `DISCORD_CHANNEL_ID`; or `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`.
 
 ## Stage 4: the database
 
@@ -243,3 +243,27 @@ The student picks one chat app. Create that app’s reader (`supabase/functions/
 - Never put a token, a group id, a channel id, or a bot id in any file.
 
 Tell the student to check: the reader’s `GET …?check=<app>` says the token and the group or channel work; after one scheduled run `last_message_id` is set; a message posted in the group appears on the website within a minute (within seconds with GroupMe’s callback); the same message is never posted twice; **Integrations → Cron** shows `read-chat-channel`.
+
+## Permissions (Week 11)
+
+Built from `runtime/permissions-plan.md` (owner: Nicole) following `runtime/permission-rules.md`. Every limit and every *Never* is enforced in code or in a database rule, not in the prompt alone.
+
+**What was already built, and which plan items it covers.** Kept as it was:
+- The posting rules R1–R9 and the code that decides the status → *May* 3 and 4; *Ask first* 3 (off campus by place code, photo in code; alcohol and payment links flagged by the AI).
+- The holds for a missing date, time, or place, and for an unknown club → *Ask first* 1 and 2. The memory rule (only an update copies from the club's own earlier post) → *Never* 1, in code.
+- The duplicate check (`events_one_live_post`, a unique index) → *Never* 2, a database rule.
+- The instruction-attempt check (the AI's flag plus code cues) → *Ask first* 4.
+
+**New in `supabase/migrations/20261101001500_permissions.sql`:**
+- `public.agent_permissions`: `key` (primary key), `label`, `kind` (`switch` or `number`), `value` (`on`/`off`, or a whole number; a CHECK refuses anything else), `reason` (3–300 characters), `changed_by`, `updated_at`, `sort`. Seeded with `on conflict (key) do nothing`: `paused` (off), `publish_on_own` (on), `posts_per_day` (100), `days_ahead` (60), `new_club_wait_days` (30).
+- Row-level security on; `revoke all` from `anon`, `authenticated`, and `service_role`; then `authenticated` may select, and update `value, reason, changed_by, updated_at` only. A trigger refuses a value change without a new reason and stamps `changed_by` (the signed-in email) and `updated_at`. `service_role` (the agent) gets select only, so it can never change a switch.
+- `clubs.established` (true for every club already on the list): a club added later waits for the new-club wait.
+- The agent can't write a rule: `service_role` loses insert, update, and delete on `lessons` and `clubs`. The agent can't delete a post: `service_role` loses delete on `events`.
+
+**The agent (`submit-event`)** reads `agent_permissions` at the start of every post (no table or a missing row: it refuses to act). Paused: it answers `status: "paused"` before any AI call and saves nothing. *Publish on its own* off, a date past *Days ahead*, or a club inside the *New-club wait* make the post wait with a reason that names the switch, its value, who set it, and their reason. *Posts per day* refuses with the same detail. The first line of `agent_notes` / `looked_at` names every switch it read and which ones held the post. The code also removes phone numbers, emails, and payment handles from the card fields the website shows, and holds a post with a payment handle (*Never* 5). Fixed limits are constants: `CLAUDE_MODEL`, `TEST_MODELS`, `MAX_TEXT` (2,000).
+
+**Test mode:** `dry_run: true` (JSON, or a form field `"true"`) decides as usual, including the duplicate check by lookup, but saves, uploads, and changes nothing, and answers `dry_run: true`. Only in test mode, `model` may be `claude-haiku-5-5` or `claude-sonnet-5-5` for that run; any other model, or `model` without `dry_run`, is refused.
+
+**Every answer** adds `dry_run`, `ms`, and `usage` `{model, input_tokens, output_tokens}`. `GET` adds `permissions` (the row count) and `switches` (key → value).
+
+**The website:** a **Permissions** tab in the moderator drawer lists every row with its switch (`.switch`) or number, its reason, and who changed it when (styled with `.lessons`, `.lesson`, `.teach-inline`). The switch or the Save button stays disabled until a reason is typed; the update saves the moderator's email. A post answered `paused` shows as “The agent is paused.”
